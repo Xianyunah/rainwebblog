@@ -1228,6 +1228,15 @@ table tr:hover td {
   white-space: nowrap;
 }
 
+.nav-version {
+  font-size: 11px;
+  color: var(--md-ref-outline);
+  margin-right: 8px;
+  white-space: nowrap;
+  align-self: flex-end;
+  padding-bottom: 2px;
+}
+
 .nav-tabs { display: flex; gap: 2px; overflow-x: auto; }
 
 .nav-tab {

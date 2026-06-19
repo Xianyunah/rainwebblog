@@ -14,6 +14,7 @@ const profileRoutes = require('./routes/profile');
 const captchaRoutes = require('./routes/captcha');
 const uploadRoutes = require('./routes/upload');
 const setupRoutes = require('./routes/setup');
+const proxyRoutes = require('./routes/proxy');
 
 const app = express();
 // Read port from .env.json config file, env var, or default
@@ -47,6 +48,11 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/captcha', captchaRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/setup', setupRoutes);
+app.use('/api/proxy', proxyRoutes);
+
+// Version info
+const version = require('fs').readFileSync('./VERSION', 'utf8').trim();
+app.get('/api/version', (req, res) => res.json({ version }));
 
 // Global error handler
 app.use((err, req, res, next) => {

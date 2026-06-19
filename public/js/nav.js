@@ -21,6 +21,10 @@ const NAV = {
       this.siteSettings = await API.getSettings();
       window._recaptchaSiteKey = this.siteSettings.recaptcha_site_key || '';
     } catch {}
+    try {
+      const v = await API.request('GET', '/version');
+      window._appVersion = v.version;
+    } catch {}
     this.render();
     this.applyTheme();
   },
@@ -48,6 +52,7 @@ const NAV = {
     nav.innerHTML = `
       <div class="nav-left">
         <a href="/" class="nav-brand">${escapeHtml(siteName)}</a>
+        <span class="nav-version">v${escapeHtml(window._appVersion || '')}</span>
         <div class="nav-tabs">${tabs}</div>
       </div>
       <div class="nav-right">${right}</div>`;

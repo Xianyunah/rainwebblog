@@ -45,7 +45,11 @@ function initTables() {
     id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL,
     url TEXT NOT NULL, embed_url TEXT DEFAULT '', description TEXT DEFAULT '',
     icon TEXT DEFAULT '', category TEXT DEFAULT '默认', sort_order INTEGER DEFAULT 0,
+    use_proxy INTEGER DEFAULT 0, version TEXT DEFAULT '',
     created_at DATETIME DEFAULT (datetime('now')))`);
+  // Migration: add columns if missing
+  try { db.run('ALTER TABLE admin_links ADD COLUMN use_proxy INTEGER DEFAULT 0'); } catch {}
+  try { db.run('ALTER TABLE admin_links ADD COLUMN version TEXT DEFAULT ""'); } catch {}
 
   db.run(`CREATE TABLE IF NOT EXISTS announcements (
     id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT DEFAULT '',

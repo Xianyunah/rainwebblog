@@ -27,35 +27,34 @@
 
 - **Node.js** 16.x 或更高版本（推荐 20.x LTS）
 - **npm** 随 Node.js 安装
-- **git**（用于自动部署和升级）
 
-### 从 GitHub 安装
+### 下载安装
 
+| 方式 | 文件 | 说明 |
+|------|------|------|
+| 🪟 Windows 开箱即用 | `rainweb-win.zip` | 含 node_modules，解压双击 `start.bat` 即可 |
+| 📦 源码版 | `rainweb-source.zip` | 需 `npm install` 安装依赖，适用于宝塔/Linux |
+
+**Windows：**
+```bash
+解压 rainweb-win.zip → 双击 start.bat → 访问 http://localhost:3001
+```
+
+**Linux / 宝塔面板：**
+```bash
+unzip rainweb-source.zip -d rainweb
+cd rainweb
+npm install
+npm start
+```
+
+**从 GitHub 安装：**
 ```bash
 git clone https://github.com/Xianyunah/rainwebblog.git
 cd rainwebblog
 npm install
 npm start
 ```
-
-### 一键部署脚本
-
-```bash
-# Linux/Mac
-chmod +x deploy.sh && ./deploy.sh
-
-# Windows
-deploy.bat
-```
-
-脚本会自动 clone 仓库、安装依赖、创建必要目录并启动。
-
-### 宝塔面板部署
-
-1. 宝塔面板 → 网站 → Node项目 → 添加Node项目
-2. 仓库地址: `https://github.com/Xianyunah/rainwebblog.git`
-3. 启动文件: `server.js`，端口: `3001`
-4. 提交后宝塔自动拉取代码、安装依赖并启动
 
 首次访问会自动跳转 `http://localhost:3001/setup.html` 完成初始化。
 
@@ -229,6 +228,17 @@ git pull
 npm install
 node cli.js restart
 ```
+
+## 版本
+
+当前版本记录在项目根目录的 `VERSION` 文件中，导航栏标题右侧会显示当前版本号。
+
+## Releases
+
+| 文件 | 说明 |
+|------|------|
+| `rainweb-win.zip` | Windows 开箱即用版，包含 node_modules，解压即运行 |
+| `rainweb-source.zip` | 源码版，需 `npm install`，适用于 Linux / 宝塔面板 |
 
 ## License
 

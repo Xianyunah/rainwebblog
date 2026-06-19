@@ -26,20 +26,27 @@
   <script src="/js/theme.js"></script>
   <script>
     const params = new URLSearchParams(location.search);
-    const url = params.get('url');
+    let url = params.get('url');
     const title = params.get('title') || url;
+    const useProxy = params.get('proxy') === '1';
+
     if (url) {
       document.getElementById('embedTitle').textContent = title;
-      document.getElementById('embedFrame').src = url;
-      document.getElementById('originalLink').href = url;
+      // When proxy is requested, fetch through our server to bypass X-Frame-Options
+      if (useProxy) {
+        document.getElementById('embedFrame').src = '/api/proxy/fetch?url=' + encodeURIComponent(url);
+        document.getElementById('originalLink').href = url;
+      } else {
+        document.getElementById('embedFrame').src = url;
+        document.getElementById('originalLink').href = url;
+      }
     }
-    // Close/back: return to previous page, fallback to homepage
+
     document.querySelector('.embed-toolbar a:first-child').onclick = function(e) {
       if (document.referrer && document.referrer !== location.href) {
         e.preventDefault();
         history.back();
       }
-      // otherwise use default href which goes to /
     };
   </script>
 </body>

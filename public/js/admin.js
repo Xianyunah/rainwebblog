@@ -46,9 +46,10 @@ async function loadPanels() {
       html += cats[cat].map(l => {
         const icon = l.icon ? `<span class="material-icons" style="font-size:24px">${escapeHtml(l.icon)}</span>` : '<span style="font-size:20px">🔗</span>';
         const embedUrl = l.embed_url || l.url;
-        return `<a href="${embedUrl ? '/embed.html?url=' + encodeURIComponent(embedUrl) + '&title=' + encodeURIComponent(l.title) : l.url}" target="${embedUrl ? '' : '_blank'}" class="card card-hover panel-card">
+        const proxyParam = l.use_proxy ? '&proxy=1' : '';
+        return `<a href="${embedUrl ? '/embed.html?url=' + encodeURIComponent(embedUrl) + '&title=' + encodeURIComponent(l.title) + proxyParam : l.url}" target="${embedUrl ? '' : '_blank'}" class="card card-hover panel-card">
           <div class="panel-icon">${icon}</div>
-          <div class="panel-info"><div class="panel-title">${escapeHtml(l.title)}</div><div class="panel-desc">${escapeHtml(l.description || l.url)}</div></div>
+          <div class="panel-info"><div class="panel-title">${escapeHtml(l.title)}${l.version ? ' <span style="font-size:12px;color:var(--md-ref-on-surface-variant);font-weight:400">' + escapeHtml(l.version) + '</span>' : ''}</div><div class="panel-desc">${escapeHtml(l.description || l.url)}</div></div>
           <div class="panel-embed"><span class="material-icons">${embedUrl ? 'open_in_new' : 'launch'}</span></div>
         </a>`;
       }).join('');
@@ -67,6 +68,7 @@ async function loadLinks() {
     tbody.innerHTML = links.map(l => `<tr>
       <td>${l.sort_order}</td>
       <td><strong>${escapeHtml(l.title)}</strong></td>
+      <td class="text-muted" style="font-size:13px">${l.version ? escapeHtml(l.version) : '-'}</td>
       <td class="truncate" style="max-width:180px"><a href="${escapeHtml(l.url)}" target="_blank" style="color:var(--md-ref-primary)">${escapeHtml(l.url)}</a></td>
       <td class="truncate" style="max-width:150px;font-size:13px;color:var(--md-ref-on-surface-variant)">${escapeHtml(l.embed_url || '-')}</td>
       <td><span class="chip" style="cursor:default;font-size:12px">${escapeHtml(l.category)}</span></td>
@@ -90,6 +92,8 @@ function openLinkDialog(data) {
     document.getElementById('linkIcon').value = data.icon || '';
     document.getElementById('linkCategory').value = data.category || '默认';
     document.getElementById('linkEmbedUrl').value = data.embed_url || '';
+    document.getElementById('linkProxy').checked = !!data.use_proxy;
+    document.getElementById('linkVersion').value = data.version || '';
     document.getElementById('linkSort').value = data.sort_order || 0;
   }
   document.getElementById('linkDialogTitle').textContent = data ? '编辑面板' : '添加面板';
@@ -102,6 +106,8 @@ async function saveLink() {
     description: document.getElementById('linkDesc').value.trim(), icon: document.getElementById('linkIcon').value.trim(),
     category: document.getElementById('linkCategory').value.trim() || '默认',
     embed_url: document.getElementById('linkEmbedUrl').value.trim(),
+    use_proxy: document.getElementById('linkProxy').checked ? 1 : 0,
+    version: document.getElementById('linkVersion').value.trim(),
     sort_order: parseInt(document.getElementById('linkSort').value) || 0 };
   if (!data.title || !data.url) { showSnackbar('标题和链接不能为空'); return; }
   try {
