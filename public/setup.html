@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>初始化向导 - RainWeb</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .setup-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--md-ref-background); }
+    .setup-card { width: 100%; max-width: 480px; padding: 40px 32px; }
+    .setup-card h1 { font-size: 28px; font-weight: 500; text-align: center; margin-bottom: 4px; }
+    .setup-card .subtitle { text-align: center; color: var(--md-ref-on-surface-variant); margin-bottom: 28px; font-size: 14px; }
+    .step-indicator { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; }
+    .step-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--md-ref-outline-variant); transition: all 0.3s; }
+    .step-dot.active { background: var(--md-ref-primary); width: 28px; border-radius: 5px; }
+    .step-dot.done { background: var(--md-ref-primary-container); }
+    .theme-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .theme-option { padding: 16px; border-radius: 12px; border: 2px solid var(--md-ref-outline-variant); cursor: pointer; text-align: center; transition: 0.2s; }
+    .theme-option:hover { border-color: var(--md-ref-primary); }
+    .theme-option.active { border-color: var(--md-ref-primary); background: var(--md-ref-primary-container); }
+    .theme-option .color-dot { width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 8px; }
+    .setup-step { display: none; }
+    .setup-step.active { display: block; animation: fadeIn 0.3s; }
+  </style>
+</head>
+<body>
+  <div class="setup-page">
+    <div class="card setup-card">
+      <h1>🌧️ RainWeb</h1>
+      <p class="subtitle">欢迎使用！请完成以下初始化设置</p>
+      <div class="step-indicator" id="stepDots">
+        <div class="step-dot active"></div>
+        <div class="step-dot"></div>
+        <div class="step-dot"></div>
+      </div>
+
+      <!-- Step 1: Admin Password -->
+      <div class="setup-step active" id="step1">
+        <h3 style="font-weight:500;margin-bottom:16px">设置管理员密码</h3>
+        <div class="form-group"><label>新密码 *</label><input type="password" id="adminPw" placeholder="至少6位" autocomplete="new-password"></div>
+        <div class="form-group"><label>确认密码 *</label><input type="password" id="adminPwConfirm" placeholder="再次输入" autocomplete="new-password"></div>
+        <button class="btn btn-filled w-full" onclick="nextStep(2)">下一步</button>
+      </div>
+
+      <!-- Step 2: Site Name -->
+      <div class="setup-step" id="step2">
+        <h3 style="font-weight:500;margin-bottom:16px">网站设置</h3>
+        <div class="form-group"><label>网站名称</label><input type="text" id="siteName" value="RainWeb" placeholder="我的网站"></div>
+        <div class="form-group"><label>选择主题色</label>
+          <div class="theme-options" id="themeOptions">
+            <div class="theme-option active" data-color="#6750a4" data-name="default" onclick="selectTheme(this)"><div class="color-dot" style="background:#6750a4"></div><div>默认</div></div>
+            <div class="theme-option" data-color="#0288d1" data-name="ocean" onclick="selectTheme(this)"><div class="color-dot" style="background:#0288d1"></div><div>海洋</div></div>
+            <div class="theme-option" data-color="#2e7d32" data-name="nature" onclick="selectTheme(this)"><div class="color-dot" style="background:#2e7d32"></div><div>自然</div></div>
+            <div class="theme-option" data-color="#e65100" data-name="sunset" onclick="selectTheme(this)"><div class="color-dot" style="background:#e65100"></div><div>日落</div></div>
+          </div>
+        </div>
+        <button class="btn btn-filled w-full" onclick="nextStep(3)">下一步</button>
+      </div>
+
+      <!-- Step 3: Confirm -->
+      <div class="setup-step" id="step3">
+        <h3 style="font-weight:500;margin-bottom:16px">确认并完成</h3>
+        <div class="card" style="padding:16px;margin-bottom:16px;font-size:14px">
+          <div style="margin-bottom:8px"><strong>管理员密码</strong>: 已设置</div>
+          <div style="margin-bottom:8px"><strong>网站名称</strong>: <span id="confirmName">RainWeb</span></div>
+          <div><strong>主题色</strong>: <span id="confirmColor">默认</span></div>
+        </div>
+        <button class="btn btn-filled w-full" onclick="completeSetup()">完成初始化</button>
+      </div>
+
+      <div id="setupError" style="color:var(--md-ref-error);font-size:14px;margin-top:12px;display:none"></div>
+    </div>
+  </div>
+
+  <div id="snackbar" class="snackbar"></div>
+  <script src="/js/theme.js"></script>
+  <script src="/js/api.js"></script>
+  <script>
+    let selectedTheme = { color: '#6750a4', name: 'default' };
+
+    function nextStep(n) {
+      const err = document.getElementById('setupError');
+      err.style.display = 'none';
+
+      if (n === 2) {
+        const pw = document.getElementById('adminPw').value;
+        const confirm = document.getElementById('adminPwConfirm').value;
+        if (pw.length < 6) { err.textContent = '密码至少6位'; err.style.display = 'block'; return; }
+        if (pw !== confirm) { err.textContent = '两次密码不一致'; err.style.display = 'block'; return; }
+      }
+
+      document.querySelectorAll('.setup-step').forEach(el => el.classList.remove('active'));
+      document.getElementById('step' + n).classList.add('active');
+      document.querySelectorAll('.step-dot').forEach((el, i) => {
+        el.classList.toggle('active', i === n - 1);
+        el.classList.toggle('done', i < n - 1);
+      });
+
+      if (n === 3) {
+        document.getElementById('confirmName').textContent = document.getElementById('siteName').value || 'RainWeb';
+        document.getElementById('confirmColor').textContent = selectedTheme.name;
+      }
+    }
+
+    function selectTheme(el) {
+      document.querySelectorAll('.theme-option').forEach(e => e.classList.remove('active'));
+      el.classList.add('active');
+      selectedTheme = { color: el.dataset.color, name: el.querySelector('div:last-child').textContent };
+    }
+
+    async function completeSetup() {
+      const btn = document.querySelector('#step3 .btn');
+      btn.disabled = true;
+      btn.textContent = '处理中...';
+      try {
+        await API.request('POST', '/setup/complete', {
+          password: document.getElementById('adminPw').value,
+          site_name: document.getElementById('siteName').value || 'RainWeb',
+          primary_color: selectedTheme.color,
+          theme_preset: selectedTheme.name
+        });
+        showSnackbar('初始化完成！');
+        setTimeout(() => window.location.href = '/', 1000);
+      } catch (e) {
+        document.getElementById('setupError').textContent = e.message;
+        document.getElementById('setupError').style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '完成初始化';
+      }
+    }
+  </script>
+</body>
+</html>

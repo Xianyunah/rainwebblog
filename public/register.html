@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>注册 - RainWeb</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  <style>
+    .register-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .register-card { width: 100%; max-width: 420px; padding: 40px 32px; }
+    .register-card h1 { font-size: 28px; font-weight: 500; text-align: center; margin-bottom: 8px; }
+    .register-card .subtitle { text-align: center; color: var(--md-ref-on-surface-variant); margin-bottom: 28px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="register-page">
+    <div class="card register-card">
+      <h1>创建账户</h1>
+      <p class="subtitle">加入 RainWeb</p>
+
+      <div class="form-group">
+        <label>用户名 *</label>
+        <input type="text" id="regUsername" placeholder="用户名" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>邮箱 *</label>
+        <input type="email" id="regEmail" placeholder="your@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>密码 *</label>
+        <input type="password" id="regPassword" placeholder="至少6位" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label>确认密码 *</label>
+        <input type="password" id="regConfirm" placeholder="再次输入密码" autocomplete="new-password">
+      </div>
+
+      <div id="recaptchaContainer" class="g-recaptcha" data-sitekey=""></div>
+  <div id="captchaContainer" style="display:none"></div>
+      <div id="regError" style="color:var(--md-ref-error);font-size:14px;margin-bottom:12px;display:none"></div>
+
+      <button class="btn btn-filled w-full" onclick="handleRegister()" id="regBtn">注册</button>
+
+      <div style="text-align:center;margin-top:16px">
+        <span class="text-muted">已有账户？</span>
+        <a href="/login.html" class="btn-text btn" style="font-size:14px">登录</a>
+      </div>
+      <div style="text-align:center;margin-top:8px">
+        <a href="/" class="btn-text btn" style="font-size:14px">← 返回主页</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="snackbar" class="snackbar"></div>
+
+  <script src="/js/theme.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/captcha.js"></script>
+  <script>
+    let captchaRequiredForRegister = false;
+    const token = localStorage.getItem('token');
+    if (token) window.location.href = '/';
+
+    // Load settings and determine captcha
+    API.getSettings().then(s => {
+      if (s.recaptcha_site_key) {
+        document.getElementById('recaptchaContainer').dataset.sitekey = s.recaptcha_site_key;
+        if (typeof grecaptcha !== 'undefined') grecaptcha.render('recaptchaContainer');
+      } else {
+        document.getElementById('recaptchaContainer').style.display = 'none';
+      }
+    });
+
+    // Check if captcha required for register
+    CAPTCHA.checkRequired('register').then(r => {
+      captchaRequiredForRegister = r.required;
+      if (r.required && r.type === 'builtin') {
+        CAPTCHA.renderBuiltin('captchaContainer');
+      }
+    });
+
+    async function handleRegister() {
+      const username = document.getElementById('regUsername').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const confirm = document.getElementById('regConfirm').value;
+      const errEl = document.getElementById('regError');
+      const btn = document.getElementById('regBtn');
+
+      if (!username || !email || !password) {
+        errEl.textContent = '请填写所有必填项';
+        errEl.style.display = 'block'; return;
+      }
+      if (password.length < 6) {
+        errEl.textContent = '密码至少6位';
+        errEl.style.display = 'block'; return;
+      }
+      if (password !== confirm) {
+        errEl.textContent = '两次密码不一致';
+        errEl.style.display = 'block'; return;
+      }
+
+      let captcha_token = '';
+      const recaptchaContainer = document.getElementById('recaptchaContainer');
+      if (recaptchaContainer.dataset.sitekey && recaptchaContainer.style.display !== 'none') {
+        captcha_token = grecaptcha.getResponse();
+        if (!captcha_token) {
+          errEl.textContent = '请完成 reCAPTCHA 验证';
+          errEl.style.display = 'block'; return;
+        }
+      }
+      if (captchaRequiredForRegister) {
+        const answer = CAPTCHA.getValue('captchaContainer');
+        const token = CAPTCHA.getToken();
+        if (!answer || !token) {
+          errEl.textContent = '请完成验证码';
+          errEl.style.display = 'block'; return;
+        }
+        const verify = await CAPTCHA.verify(answer);
+        if (!verify.success) {
+          errEl.textContent = verify.error || '验证码错误';
+          errEl.style.display = 'block';
+          CAPTCHA.reset('captchaContainer');
+          return;
+        }
+        captcha_token = token;
+      }
+
+      errEl.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = '注册中...';
+
+      try {
+        const data = await API.register(username, password, email, captcha_token);
+        if (data.requires_verification) {
+          // Show verification sent message
+          errEl.style.color = 'var(--md-ref-primary)';
+          errEl.textContent = '验证邮件已发送到 ' + email + '，请查收并完成验证。';
+          errEl.style.display = 'block';
+          btn.textContent = '已发送验证邮件';
+        } else {
+          showSnackbar('注册成功，请登录');
+          setTimeout(() => window.location.href = '/login.html', 1000);
+        }
+      } catch (e) {
+        errEl.style.color = 'var(--md-ref-error)';
+        errEl.textContent = e.message;
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '注册';
+        if (recaptchaContainer.dataset.sitekey) grecaptcha.reset();
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理面板 - RainWeb</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav-bar" id="mainNav"></nav>
+  <main class="page page-wide">
+    <div class="admin-header">
+      <h2 id="adminTitle">管理面板</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-tonal btn-sm" onclick="switchTab('panels')" id="tabPanelsBtn">面板</button>
+        <button class="btn btn-tonal btn-sm" onclick="switchTab('links')" id="tabLinksBtn">面板链接</button>
+        <button class="btn btn-tonal btn-sm" onclick="switchTab('settings')" id="tabSettingsBtn">站点设置</button>
+        <button class="btn btn-tonal btn-sm" onclick="switchTab('theme')" id="tabThemeBtn">主题</button>
+        <button class="btn btn-tonal btn-sm" onclick="switchTab('forum')" id="tabForumBtn">论坛</button>
+        <button class="btn btn-tonal btn-sm" onclick="switchTab('blog')" id="tabBlogBtn">博客</button>
+        <button class="btn btn-tonal btn-sm" onclick="switchTab('users')" id="tabUsersBtn">用户</button>
+        <button class="btn btn-tonal btn-sm" onclick="switchTab('email')" id="tabEmailBtn">邮件</button>
+      </div>
+    </div>
+
+    <!-- Panels Dashboard -->
+    <div id="tabPanels" class="tab-content">
+      <div id="panelsGrid" class="admin-panels"></div>
+    </div>
+
+    <!-- Admin Links Management -->
+    <div id="tabLinks" class="tab-content" style="display:none">
+      <div class="admin-header"><h2>面板链接管理</h2><button class="btn btn-filled" onclick="openLinkDialog()"><span class="material-icons">add</span> 添加面板</button></div>
+      <div class="table-wrapper"><table><thead><tr><th>排序</th><th>标题</th><th>URL</th><th>嵌入URL</th><th>分类</th><th style="width:120px">操作</th></tr></thead><tbody id="linksBody"><tr><td colspan="6" class="text-center text-muted">加载中...</td></tr></tbody></table></div>
+    </div>
+
+    <!-- Site Settings -->
+    <div id="tabSettings" class="tab-content settings-section" style="display:none">
+      <h3>基本设置</h3>
+      <div class="form-group"><label>网站名称</label><input type="text" id="setSiteName"></div>
+      <div class="form-group"><label>网站描述</label><input type="text" id="setSiteDesc"></div>
+      <div class="form-group"><label>主题色</label><input type="color" id="setPrimaryColor" class="color-input"></div>
+      <h3>验证码设置</h3>
+      <div class="form-group">
+        <label>验证码类型</label>
+        <select id="captchaType" onchange="toggleCaptchaConfig()">
+          <option value="none">不使用验证码</option>
+          <option value="builtin">使用普通验证码（内置扭曲文字）</option>
+          <option value="recaptcha">使用 Google reCAPTCHA V2</option>
+        </select>
+      </div>
+      <div id="captchaScopeConfig" style="display:none">
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:12px">
+          <label style="margin:0;min-width:80px">登录验证</label>
+          <label style="font-weight:400;gap:6px;display:flex;align-items:center"><input type="checkbox" id="capLogin"> 启用</label>
+        </div>
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:12px">
+          <label style="margin:0;min-width:80px">注册验证</label>
+          <label style="font-weight:400;gap:6px;display:flex;align-items:center"><input type="checkbox" id="capRegister"> 启用</label>
+        </div>
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:12px">
+          <label style="margin:0;min-width:80px">发帖验证</label>
+          <label style="font-weight:400;gap:6px;display:flex;align-items:center"><input type="checkbox" id="capForum"> 启用</label>
+        </div>
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:12px">
+          <label style="margin:0;min-width:80px">失败次数过多</label>
+          <label style="font-weight:400;gap:6px;display:flex;align-items:center"><input type="checkbox" id="capFailed"> 启用</label>
+          <input type="number" id="capFailedThreshold" style="width:80px" placeholder="5">
+          <span class="text-muted" style="font-size:13px">次失败后触发</span>
+        </div>
+      </div>
+      <div id="recaptchaConfig" style="display:none">
+        <h3>Google reCAPTCHA V2 配置</h3>
+        <div class="form-group"><label>Site Key</label><input type="text" id="setRecaptchaSite" placeholder="6L..."></div>
+        <div class="form-group"><label>Secret Key</label><input type="text" id="setRecaptchaSecret" placeholder="6L..."></div>
+      </div>
+      <button class="btn btn-filled" onclick="saveSettings()">保存设置</button>
+    </div>
+
+    <!-- Theme Settings -->
+    <div id="tabTheme" class="tab-content settings-section" style="display:none">
+      <div class="form-group"><label>主题色</label><input type="color" id="setPrimaryColor" class="color-input"></div>
+      <h3>壁纸背景</h3>
+      <div class="form-group"><label>上传图片</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="file" id="wallpaperFile" accept="image/*" style="flex:1">
+          <button class="btn btn-tonal btn-sm" onclick="uploadWallpaper()">上传</button>
+        </div>
+        <div id="wallpaperPreview" style="margin-top:8px;display:none">
+          <img id="wallpaperPreviewImg" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--md-ref-outline-variant)">
+          <div style="margin-top:4px;display:flex;gap:8px;align-items:center">
+            <span id="wallpaperFilename" class="text-muted" style="font-size:13px"></span>
+            <button class="btn btn-text btn-sm" style="color:var(--md-ref-error)" onclick="removeWallpaper()">移除</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-group"><label>图片 URL</label><input type="url" id="setWallpaper" placeholder="https://example.com/wallpaper.jpg" oninput="previewWallpaperUrl(this.value)"></div>
+      <div class="form-group"><label>缩放方式</label>
+        <select id="setWallpaperScale">
+          <option value="cover">cover - 覆盖填充</option>
+          <option value="contain">contain - 完整显示</option>
+          <option value="repeat">repeat - 平铺重复</option>
+          <option value="stretch">stretch - 拉伸填充</option>
+        </select>
+      </div>
+      <div id="uploadedWallpapers" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;margin-bottom:12px"></div>
+      <h3>导航栏样式</h3>
+      <div class="toggle-group" id="navStyleGroup">
+        <span class="toggle-btn active" data-val="default" onclick="setNavStyle('default')">默认</span>
+        <span class="toggle-btn" data-val="glass" onclick="setNavStyle('glass')">磨砂玻璃</span>
+        <span class="toggle-btn" data-val="capsule" onclick="setNavStyle('capsule')">胶囊</span>
+      </div>
+      <h3>卡片样式</h3>
+      <div class="toggle-group" id="cardStyleGroup">
+        <span class="toggle-btn active" data-val="default" onclick="setCardStyle('default')">默认</span>
+        <span class="toggle-btn" data-val="glass" onclick="setCardStyle('glass')">磨砂玻璃</span>
+      </div>
+      <h3>玻璃效果微调</h3>
+      <div class="form-group"><label>模糊强度 (px)</label><input type="range" id="setGlassBlur" min="5" max="40" value="20" oninput="document.getElementById('blurVal').textContent=this.value+'px'"><span id="blurVal" class="text-muted" style="font-size:14px">20px</span></div>
+      <div class="form-group"><label>透明度</label><input type="range" id="setGlassOpacity" min="0.1" max="0.95" step="0.05" value="0.6" oninput="document.getElementById('opacityVal').textContent=this.value"><span id="opacityVal" class="text-muted" style="font-size:14px">0.6</span></div>
+      <button class="btn btn-filled" onclick="saveThemeSettings()">保存</button>
+    </div>
+
+    <!-- Forum Management -->
+    <div id="tabForum" class="tab-content" style="display:none">
+      <div class="admin-header"><h2>论坛管理</h2><button class="btn btn-filled" onclick="openForumCatDialog()"><span class="material-icons">add</span> 添加分类</button></div>
+      <div class="table-wrapper" style="margin-bottom:24px"><table><thead><tr><th>分类</th><th>描述</th><th>排序</th><th style="width:100px">操作</th></tr></thead><tbody id="forumCatsBody"></tbody></table></div>
+      <div class="table-wrapper"><table><thead><tr><th>帖子</th><th>分类</th><th>作者</th><th>回复</th><th>时间</th><th style="width:80px">操作</th></tr></thead><tbody id="forumPostsBody"></tbody></table></div>
+    </div>
+
+    <!-- Blog Management -->
+    <div id="tabBlog" class="tab-content" style="display:none">
+      <div class="admin-header"><h2>博客管理</h2><button class="btn btn-filled" onclick="openBlogDialog()"><span class="material-icons">add</span> 写文章</button></div>
+      <div class="table-wrapper"><table><thead><tr><th>标题</th><th>状态</th><th>Markdown</th><th>时间</th><th style="width:120px">操作</th></tr></thead><tbody id="blogBody"></tbody></table></div>
+    </div>
+
+    <!-- User Management -->
+    <div id="tabUsers" class="tab-content" style="display:none">
+      <div class="admin-header"><h2>用户管理</h2><button class="btn btn-filled" onclick="openUserDialog()"><span class="material-icons">person_add</span> 添加用户</button></div>
+      <div class="table-wrapper"><table><thead><tr><th>ID</th><th>用户名</th><th>邮箱</th><th>验证</th><th>角色</th><th>注册时间</th><th style="width:80px">操作</th></tr></thead><tbody id="usersBody"></tbody></table></div>
+    </div>
+
+    <!-- Email Settings -->
+    <div id="tabEmail" class="tab-content settings-section" style="display:none">
+      <h3>SMTP 邮件配置</h3>
+      <div class="form-group"><label>SMTP 主机</label><input type="text" id="setSmtpHost" placeholder="smtp.example.com"></div>
+      <div class="form-group"><label>端口</label><input type="number" id="setSmtpPort" placeholder="587"></div>
+      <div class="form-group"><label>用户名</label><input type="text" id="setSmtpUser"></div>
+      <div class="form-group"><label>密码</label><input type="password" id="setSmtpPass"></div>
+      <div class="form-group"><label>发件人邮箱</label><input type="email" id="setSmtpFrom" placeholder="noreply@example.com"></div>
+      <div class="form-group"><label>发件人名称</label><input type="text" id="setSmtpFromName" placeholder="RainWeb"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-filled" onclick="saveSmtpSettings()">保存邮件配置</button>
+        <button class="btn btn-tonal" onclick="testSmtp()">发送测试邮件</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Dialogs: Link, Forum Cat, Blog, User -->
+  <div class="dialog-overlay" id="linkDialog"><div class="dialog"><h3 id="linkDialogTitle">添加面板</h3><input type="hidden" id="linkId">
+    <div class="form-group"><label>标题 *</label><input type="text" id="linkTitle"></div>
+    <div class="form-group"><label>URL *</label><input type="url" id="linkUrl" placeholder="https://..."></div>
+    <div class="form-group"><label>嵌入 URL（iframe嵌入用）</label><input type="url" id="linkEmbedUrl" placeholder="留空则新标签页打开"></div>
+    <div class="form-group"><label>描述</label><input type="text" id="linkDesc"></div>
+    <div class="form-group"><label>图标 (Material图标名)</label><input type="text" id="linkIcon" placeholder="settings, dashboard, ..."></div>
+    <div class="form-group"><label>分类</label><input type="text" id="linkCategory" placeholder="默认"></div>
+    <div class="form-group"><label>排序</label><input type="number" id="linkSort" value="0"></div>
+    <div class="actions"><button class="btn btn-text" onclick="closeDialog('linkDialog')">取消</button><button class="btn btn-filled" onclick="saveLink()">保存</button></div></div></div>
+
+  <div class="dialog-overlay" id="forumCatDialog"><div class="dialog"><h3 id="forumCatDialogTitle">添加分类</h3><input type="hidden" id="forumCatId">
+    <div class="form-group"><label>名称 *</label><input type="text" id="forumCatName"></div>
+    <div class="form-group"><label>描述</label><input type="text" id="forumCatDesc"></div>
+    <div class="form-group"><label>排序</label><input type="number" id="forumCatSort" value="0"></div>
+    <div class="actions"><button class="btn btn-text" onclick="closeDialog('forumCatDialog')">取消</button><button class="btn btn-filled" onclick="saveForumCat()">保存</button></div></div></div>
+
+  <div class="dialog-overlay" id="blogDialog"><div class="dialog" style="max-width:640px"><h3 id="blogDialogTitle">写文章</h3><input type="hidden" id="blogId">
+    <div class="form-group"><label>标题 *</label><input type="text" id="blogTitle"></div>
+    <div class="form-group"><label>摘要</label><input type="text" id="blogExcerpt"></div>
+    <div class="toggle-group">
+      <span class="toggle-btn active" id="toggleMd" onclick="setMarkdown(1)">Markdown</span>
+      <span class="toggle-btn" id="togglePlain" onclick="setMarkdown(0)">纯文本</span>
+    </div>
+    <div class="form-group"><label>内容 *</label><textarea id="blogContent" style="min-height:250px;font-family:monospace"></textarea></div>
+    <div style="margin-bottom:16px"><button class="btn btn-text btn-sm" onclick="previewMarkdown()">预览</button></div>
+    <div id="blogPreview" class="md-body" style="display:none;padding:16px;background:var(--md-ref-surface-container-low);border-radius:12px;margin-bottom:16px"></div>
+    <div class="form-group"><label><input type="checkbox" id="blogPublished" checked> 发布</label></div>
+    <div class="actions"><button class="btn btn-text" onclick="closeDialog('blogDialog')">取消</button><button class="btn btn-filled" onclick="saveBlogPost()">保存</button></div></div></div>
+
+  <div class="dialog-overlay" id="userDialog"><div class="dialog"><h3>添加用户</h3>
+    <div class="form-group"><label>用户名 *</label><input type="text" id="newUsername"></div>
+    <div class="form-group"><label>密码 *</label><input type="password" id="newPassword"></div>
+    <div class="form-group"><label>角色</label><select id="newRole"><option value="user">用户</option><option value="admin">管理员</option></select></div>
+    <div class="actions"><button class="btn btn-text" onclick="closeDialog('userDialog')">取消</button><button class="btn btn-filled" onclick="saveUser()">创建</button></div></div></div>
+
+  <div class="dialog-overlay" id="confirmDialog"><div class="dialog"><h3>确认操作</h3><p id="confirmMsg" style="margin-bottom:24px;font-size:16px"></p><div class="actions"><button class="btn btn-text" onclick="closeDialog('confirmDialog')">取消</button><button class="btn btn-danger" id="confirmBtn">确认删除</button></div></div></div>
+
+
+
+  <div id="snackbar" class="snackbar"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="/js/theme.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

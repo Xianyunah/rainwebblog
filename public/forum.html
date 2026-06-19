@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>论坛 - RainWeb</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav-bar" id="mainNav"></nav>
+  <main class="page">
+    <div id="forumApp">
+      <div class="forum-layout">
+        <aside class="forum-sidebar">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-weight:600;font-size:16px">分类</span>
+            <button class="btn btn-filled btn-sm" id="newPostBtn" onclick="showNewPost()">发帖</button>
+          </div>
+          <div id="categoryList" class="forum-cat-list"></div>
+        </aside>
+        <div id="forumContent" class="forum-content"></div>
+      </div>
+    </div>
+  </main>
+  <div class="dialog-overlay" id="newPostDialog"><div class="dialog"><h3>发布新帖</h3>
+    <div class="form-group"><label>分类</label><select id="postCategory"></select></div>
+    <div class="form-group"><label>标题 *</label><input type="text" id="postTitle"></div>
+    <div class="form-group"><label>内容 *</label><textarea id="postContent" style="min-height:150px"></textarea></div>
+    <div id="forumCaptcha" style="display:none"></div>
+    <div class="actions"><button class="btn btn-text" onclick="closeDialog('newPostDialog')">取消</button><button class="btn btn-filled" onclick="submitPost()">发布</button></div></div></div>
+  <div class="dialog-overlay" id="replyDialog"><div class="dialog"><h3>回复</h3>
+    <div class="form-group"><textarea id="replyContent" style="min-height:120px"></textarea></div>
+    <div class="actions"><button class="btn btn-text" onclick="closeDialog('replyDialog')">取消</button><button class="btn btn-filled" onclick="submitReply()">回复</button></div></div></div>
+  <div id="snackbar" class="snackbar"></div>
+  <script src="/js/theme.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/captcha.js"></script>
+  <script src="/js/forum.js"></script>
+</body>
+</html>

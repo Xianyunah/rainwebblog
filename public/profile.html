@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人中心 - RainWeb</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav-bar" id="mainNav"></nav>
+  <main class="page" style="max-width:600px">
+    <h1 class="page-title">个人中心</h1>
+
+    <div id="profileContent">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+  </main>
+
+  <!-- Password Dialog -->
+  <div class="dialog-overlay" id="pwChangeDialog">
+    <div class="dialog">
+      <h3>修改密码</h3>
+      <div class="form-group"><label>原密码</label><input type="password" id="oldPw"></div>
+      <div class="form-group"><label>新密码（至少6位）</label><input type="password" id="newPw"></div>
+      <div class="form-group"><label>确认新密码</label><input type="password" id="confirmPw"></div>
+      <div class="actions">
+        <button class="btn btn-text" onclick="closeDialog('pwChangeDialog')">取消</button>
+        <button class="btn btn-filled" onclick="changePassword()">确认修改</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="snackbar" class="snackbar"></div>
+
+  <script src="/js/theme.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script>
+    async function loadProfile() {
+      const container = document.getElementById('profileContent');
+      try {
+        const user = await API.getMe();
+        container.innerHTML = `
+          <div class="card" style="margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+              <div style="width:64px;height:64px;border-radius:50%;background:var(--md-ref-primary-container);color:var(--md-ref-on-primary-container);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:600">
+                ${escapeHtml(user.username.charAt(0).toUpperCase())}
+              </div>
+              <div>
+                <h3 style="font-size:20px;font-weight:600">${escapeHtml(user.username)}</h3>
+                <span class="chip" style="cursor:default;background:var(--md-ref-secondary-container);color:var(--md-ref-on-secondary-container);font-size:12px">${user.role === 'admin' ? '管理员' : '用户'}</span>
+              </div>
+            </div>
+
+            <div class="form-group"><label>邮箱</label>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input type="email" id="profileEmail" value="${escapeHtml(user.email || '')}" style="flex:1">
+                ${!user.email_verified ? '<span class="chip" style="cursor:default;background:var(--md-ref-error);color:var(--md-ref-on-error);font-size:12px">未验证</span>' : '<span class="chip" style="cursor:default;background:var(--md-ref-primary-container);color:var(--md-ref-on-primary-container);font-size:12px">已验证</span>'}
+              </div>
+            </div>
+            <button class="btn btn-tonal btn-sm" onclick="updateEmail()">保存邮箱</button>
+            ${!user.email_verified ? ` <button class="btn btn-text btn-sm" onclick="resendVerify()">重新发送验证</button>` : ''}
+
+            <hr style="border:none;border-top:1px solid var(--md-ref-outline-variant);margin:24px 0">
+
+            <h4 style="font-weight:500;margin-bottom:12px">安全设置</h4>
+            <button class="btn btn-outline" onclick="openDialog('pwChangeDialog')">修改密码</button>
+            <button class="btn btn-text btn-sm" style="color:var(--md-ref-error);margin-left:8px" onclick="handleLogout()">退出登录</button>
+          </div>
+          <div class="card" style="text-align:center;padding:16px;color:var(--md-ref-on-surface-variant);font-size:13px">
+            注册时间: ${user.created_at}
+          </div>`;
+      } catch (e) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>' + escapeHtml(e.message) + '</p></div>';
+      }
+    }
+
+    function closeDialog(id) { document.getElementById(id).classList.remove('active'); }
+    function openDialog(id) { document.getElementById(id).classList.add('active'); }
+
+    async function updateEmail() {
+      const email = document.getElementById('profileEmail').value.trim();
+      if (!email) { showSnackbar('请输入邮箱'); return; }
+      try {
+        await API.request('PUT', '/profile', { email });
+        showSnackbar('邮箱已更新');
+      } catch (e) { showSnackbar(e.message); }
+    }
+
+    async function resendVerify() {
+      try {
+        await API.request('POST', '/profile/resend-verify');
+        showSnackbar('验证邮件已发送');
+      } catch (e) { showSnackbar(e.message); }
+    }
+
+    async function changePassword() {
+      const oldPw = document.getElementById('oldPw').value;
+      const newPw = document.getElementById('newPw').value;
+      const confirm = document.getElementById('confirmPw').value;
+      if (!oldPw || !newPw) { showSnackbar('请填写完整'); return; }
+      if (newPw.length < 6) { showSnackbar('新密码至少6位'); return; }
+      if (newPw !== confirm) { showSnackbar('两次密码不一致'); return; }
+      try {
+        await API.request('PUT', '/profile/password', { oldPassword: oldPw, newPassword: newPw });
+        showSnackbar('密码已修改');
+        closeDialog('pwChangeDialog');
+        document.getElementById('oldPw').value = '';
+        document.getElementById('newPw').value = '';
+        document.getElementById('confirmPw').value = '';
+      } catch (e) { showSnackbar(e.message); }
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('token'); localStorage.removeItem('username'); localStorage.removeItem('role');
+      window.location.href = '/';
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) window.location.href = '/login.html';
+      else loadProfile();
+    });
+  </script>
+</body>
+</html>

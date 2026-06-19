@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>嵌入 - RainWeb</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { overflow: hidden; }
+  </style>
+</head>
+<body>
+  <div class="embed-page">
+    <div class="embed-toolbar">
+      <a href="/" class="btn-icon"><span class="material-icons">close</span></a>
+      <span class="embed-title" id="embedTitle">加载中...</span>
+      <a id="originalLink" href="#" target="_blank" class="btn btn-text btn-sm" title="在新标签页中打开">
+        <span class="material-icons">open_in_new</span> 原站
+      </a>
+      <button class="btn-icon" onclick="toggleTheme()"><span class="material-icons">dark_mode</span></button>
+    </div>
+    <iframe class="embed-container" id="embedFrame" sandbox="allow-scripts allow-forms allow-same-origin allow-popups" loading="lazy"></iframe>
+  </div>
+
+  <script src="/js/theme.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const url = params.get('url');
+    const title = params.get('title') || url;
+    if (url) {
+      document.getElementById('embedTitle').textContent = title;
+      document.getElementById('embedFrame').src = url;
+      document.getElementById('originalLink').href = url;
+    }
+  </script>
+</body>
+</html>

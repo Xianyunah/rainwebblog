@@ -1,0 +1,6 @@
+node_modules/
+data.db
+.env.json
+server.pid
+public/wallpaper/*
+!public/wallpaper/.gitkeep
