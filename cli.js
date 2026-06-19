@@ -262,29 +262,75 @@ async function cmdRestart() {
 }
 
 // === Upgrade ===
+const REPO_URL = 'https://github.com/Xianyunah/rainwebblog.git';
+const REPO_ZIP = 'https://github.com/Xianyunah/rainwebblog/archive/refs/heads/main.zip';
+
 async function cmdUpgrade() {
   console.log('=== RainWeb Upgrade ===\n');
+  const isGitRepo = fs.existsSync(path.join(__dirname, '.git'));
 
-  // Check if git is available
-  try {
-    execSync('git --version', { stdio: 'pipe' });
-  } catch {
-    console.error('Git is not installed or not in PATH.');
-    process.exit(1);
-  }
+  if (isGitRepo) {
+    console.log('1. Pulling latest code via git...');
+    try {
+      execSync('git pull', { cwd: __dirname, stdio: 'inherit' });
+    } catch {
+      console.error('Git pull failed. Check for conflicts.');
+      process.exit(1);
+    }
+  } else {
+    console.log('1. Downloading latest release...');
+    try {
+      const tmpDir = path.join(__dirname, '.upgrade-tmp');
+      if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
+      fs.mkdirSync(tmpDir, { recursive: true });
 
-  // Check if it's a git repo
-  if (!fs.existsSync(path.join(__dirname, '.git'))) {
-    console.error('Not a git repository. Clone first:\n  git clone <your-repo-url>\n  cd rainweb');
-    process.exit(1);
-  }
+      // Download zip using fetch or curl
+      const zipPath = path.join(tmpDir, 'rainweb.zip');
+      try {
+        execSync(`curl -L "${REPO_ZIP}" -o "${zipPath}"`, { stdio: 'pipe' });
+      } catch {
+        // Fallback to wget or node https
+        execSync(`node -e "
+          const https = require('https');
+          const fs = require('fs');
+          const f = fs.createWriteStream('${zipPath.replace(/\\/g, '/')}');
+          https.get('${REPO_ZIP}', r => r.pipe(f));
+        "`, { stdio: 'pipe', timeout: 60000 });
+      }
 
-  console.log('1. Pulling latest code...');
-  try {
-    execSync('git pull', { cwd: __dirname, stdio: 'inherit' });
-  } catch {
-    console.error('Git pull failed. Check for conflicts.');
-    process.exit(1);
+      // Extract (requires unzip or 7z)
+      const extractDir = path.join(tmpDir, 'extracted');
+      fs.mkdirSync(extractDir, { recursive: true });
+      execSync(`tar -xf "${zipPath}" -C "${extractDir}"`, { stdio: 'pipe' });
+
+      // Find the inner directory (github adds a prefix dir)
+      const inner = fs.readdirSync(extractDir).filter(f => fs.statSync(path.join(extractDir, f)).isDirectory())[0];
+      const srcDir = inner ? path.join(extractDir, inner) : extractDir;
+
+      // Copy files, excluding data.db and node_modules
+      const exclude = ['data.db', 'node_modules', '.env.json', 'server.pid', 'releases'];
+      const cpDir = (src, dest) => {
+        fs.readdirSync(src).forEach(f => {
+          if (exclude.includes(f)) return;
+          const s = path.join(src, f), d = path.join(dest, f);
+          if (fs.statSync(s).isDirectory()) {
+            if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+            cpDir(s, d);
+          } else {
+            fs.copyFileSync(s, d);
+          }
+        });
+      };
+      cpDir(srcDir, __dirname);
+
+      // Cleanup
+      fs.rmSync(tmpDir, { recursive: true });
+      console.log('  Download & extract complete.');
+    } catch (e) {
+      console.error('Download failed:', e.message);
+      console.log('  Fallback: manually download from ' + REPO_URL);
+      process.exit(1);
+    }
   }
 
   console.log('\n2. Installing dependencies...');
@@ -297,7 +343,6 @@ async function cmdUpgrade() {
 
   console.log('\n3. Restarting server...');
   await cmdRestart();
-
   console.log('\n=== Upgrade complete! ===');
 }
 
