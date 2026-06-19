@@ -34,7 +34,6 @@
       </div>
     </div>
   </div>
-  <div id="captchaContainer" style="display:none"></div>
 
   <div id="snackbar" class="snackbar"></div>
   <script src="/js/theme.js"></script>
@@ -42,20 +41,7 @@
   <script src="/js/captcha.js"></script>
   <script>
     const token = localStorage.getItem('token');
-    if (token) { window.location.href = '/'; }
-
-    let captchaRequired = false;
-
-    async function checkCaptchaNeeded() {
-      const r = await CAPTCHA.checkRequired('login');
-      captchaRequired = r.required;
-      if (r.required) {
-        if (r.type === 'builtin') {
-          await CAPTCHA.renderBuiltin('captchaContainer');
-        }
-      }
-    }
-    checkCaptchaNeeded();
+    if (token) window.location.href = '/';
 
     function togglePw(btn) {
       const input = btn.parentElement.querySelector('input');
@@ -71,29 +57,15 @@
       const btn = document.getElementById('loginBtn');
       if (!username || !password) { errEl.textContent = '请输入用户名和密码'; errEl.style.display = 'block'; return; }
 
-      let captchaToken = '';
-      if (captchaRequired) {
-        const answer = CAPTCHA.getValue('captchaContainer');
-        const token = CAPTCHA.getToken();
-        if (!answer || !token) {
-          errEl.textContent = '请完成验证码';
-          errEl.style.display = 'block'; return;
-        }
-        const verify = await CAPTCHA.verify(answer);
-        if (!verify.success) {
-          errEl.textContent = verify.error || '验证码错误';
-          errEl.style.display = 'block';
-          CAPTCHA.reset('captchaContainer');
-          return;
-        }
-        captchaToken = token;
-      }
+      // Show captcha modal if needed
+      const captchaOk = await CAPTCHA.verify('login');
+      if (!captchaOk) return; // user cancelled
 
       errEl.style.display = 'none';
       btn.disabled = true;
       btn.textContent = '登录中...';
       try {
-        const data = await API.login(username, password, captchaToken);
+        const data = await API.login(username, password, 'verified');
         localStorage.setItem('token', data.token);
         localStorage.setItem('username', data.username);
         localStorage.setItem('role', data.role);
@@ -103,10 +75,6 @@
         errEl.style.display = 'block';
         btn.disabled = false;
         btn.textContent = '登录';
-        if (e.needs_captcha || captchaRequired) {
-          document.getElementById('captchaContainer').style.display = 'block';
-          CAPTCHA.render('captchaContainer');
-        }
       }
     }
 

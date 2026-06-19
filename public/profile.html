@@ -11,22 +11,26 @@
   <nav class="nav-bar" id="mainNav"></nav>
   <main class="page" style="max-width:600px">
     <h1 class="page-title">个人中心</h1>
-
-    <div id="profileContent">
-      <div class="loading"><div class="spinner"></div></div>
-    </div>
+    <div id="profileContent"><div class="loading"><div class="spinner"></div></div></div>
   </main>
 
-  <!-- Password Dialog -->
+  <!-- Password Dialog (Step 1: send code) -->
   <div class="dialog-overlay" id="pwChangeDialog">
-    <div class="dialog">
+    <div class="dialog" id="pwDialogContent">
       <h3>修改密码</h3>
-      <div class="form-group"><label>原密码</label><input type="password" id="oldPw"></div>
-      <div class="form-group"><label>新密码（至少6位）</label><input type="password" id="newPw"></div>
-      <div class="form-group"><label>确认新密码</label><input type="password" id="confirmPw"></div>
-      <div class="actions">
-        <button class="btn btn-text" onclick="closeDialog('pwChangeDialog')">取消</button>
-        <button class="btn btn-filled" onclick="changePassword()">确认修改</button>
+      <div id="pwStep1">
+        <p class="text-muted" style="margin-bottom:16px;font-size:14px">验证码将发送到您的注册邮箱</p>
+        <button class="btn btn-filled w-full" onclick="sendPwCode()">发送验证码</button>
+      </div>
+      <div id="pwStep2" style="display:none">
+        <div class="form-group"><label>验证码</label><input type="text" id="pwCode" placeholder="8 位验证码" maxlength="8" style="text-align:center;font-size:24px;letter-spacing:8px"></div>
+        <div class="form-group"><label>原密码</label><input type="password" id="oldPw"></div>
+        <div class="form-group"><label>新密码（至少6位）</label><input type="password" id="newPw"></div>
+        <div class="form-group"><label>确认新密码</label><input type="password" id="confirmPw"></div>
+        <div class="actions">
+          <button class="btn btn-text" onclick="closeDialog('pwChangeDialog')">取消</button>
+          <button class="btn btn-filled" onclick="changePassword()">确认修改</button>
+        </div>
       </div>
     </div>
   </div>
@@ -37,6 +41,13 @@
   <script src="/js/api.js"></script>
   <script src="/js/nav.js"></script>
   <script>
+    function escapeHtml(t) {
+      const d = document.createElement('div');
+      d.textContent = t; return d.innerHTML;
+    }
+    function closeDialog(id) { document.getElementById(id).classList.remove('active'); }
+    function openDialog(id) { document.getElementById(id).classList.add('active'); }
+
     async function loadProfile() {
       const container = document.getElementById('profileContent');
       try {
@@ -49,23 +60,20 @@
               </div>
               <div>
                 <h3 style="font-size:20px;font-weight:600">${escapeHtml(user.username)}</h3>
-                <span class="chip" style="cursor:default;background:var(--md-ref-secondary-container);color:var(--md-ref-on-secondary-container);font-size:12px">${user.role === 'admin' ? '管理员' : '用户'}</span>
+                <span class="chip" style="cursor:default;font-size:12px;background:var(--md-ref-secondary-container);color:var(--md-ref-on-secondary-container)">${user.role === 'admin' ? '管理员' : '用户'}</span>
               </div>
             </div>
-
-            <div class="form-group"><label>邮箱</label>
-              <div style="display:flex;align-items:center;gap:8px">
-                <input type="email" id="profileEmail" value="${escapeHtml(user.email || '')}" style="flex:1">
-                ${!user.email_verified ? '<span class="chip" style="cursor:default;background:var(--md-ref-error);color:var(--md-ref-on-error);font-size:12px">未验证</span>' : '<span class="chip" style="cursor:default;background:var(--md-ref-primary-container);color:var(--md-ref-on-primary-container);font-size:12px">已验证</span>'}
+            <div class="form-group"><label>邮箱（注册后不可修改）</label>
+              <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:12px;background:var(--md-ref-surface-container);font-size:15px">
+                <span>${escapeHtml(user.email || '未设置')}</span>
+                ${user.email_verified
+                  ? '<span class="chip" style="cursor:default;font-size:12px;background:var(--md-ref-primary-container);color:var(--md-ref-on-primary-container)">已验证</span>'
+                  : '<span class="chip" style="cursor:default;font-size:12px;background:var(--md-ref-error);color:var(--md-ref-on-error)">未验证</span>'}
               </div>
             </div>
-            <button class="btn btn-tonal btn-sm" onclick="updateEmail()">保存邮箱</button>
-            ${!user.email_verified ? ` <button class="btn btn-text btn-sm" onclick="resendVerify()">重新发送验证</button>` : ''}
-
             <hr style="border:none;border-top:1px solid var(--md-ref-outline-variant);margin:24px 0">
-
             <h4 style="font-weight:500;margin-bottom:12px">安全设置</h4>
-            <button class="btn btn-outline" onclick="openDialog('pwChangeDialog')">修改密码</button>
+            <button class="btn btn-outline" onclick="openPwDialog()">修改密码</button>
             <button class="btn btn-text btn-sm" style="color:var(--md-ref-error);margin-left:8px" onclick="handleLogout()">退出登录</button>
           </div>
           <div class="card" style="text-align:center;padding:16px;color:var(--md-ref-on-surface-variant);font-size:13px">
@@ -76,39 +84,38 @@
       }
     }
 
-    function closeDialog(id) { document.getElementById(id).classList.remove('active'); }
-    function openDialog(id) { document.getElementById(id).classList.add('active'); }
-
-    async function updateEmail() {
-      const email = document.getElementById('profileEmail').value.trim();
-      if (!email) { showSnackbar('请输入邮箱'); return; }
-      try {
-        await API.request('PUT', '/profile', { email });
-        showSnackbar('邮箱已更新');
-      } catch (e) { showSnackbar(e.message); }
+    function openPwDialog() {
+      document.getElementById('pwStep1').style.display = 'block';
+      document.getElementById('pwStep2').style.display = 'none';
+      document.getElementById('pwCode').value = '';
+      document.getElementById('oldPw').value = '';
+      document.getElementById('newPw').value = '';
+      document.getElementById('confirmPw').value = '';
+      openDialog('pwChangeDialog');
     }
 
-    async function resendVerify() {
+    async function sendPwCode() {
       try {
-        await API.request('POST', '/profile/resend-verify');
-        showSnackbar('验证邮件已发送');
+        await API.request('POST', '/profile/send-pw-code');
+        showSnackbar('验证码已发送');
+        document.getElementById('pwStep1').style.display = 'none';
+        document.getElementById('pwStep2').style.display = 'block';
       } catch (e) { showSnackbar(e.message); }
     }
 
     async function changePassword() {
+      const code = document.getElementById('pwCode').value.trim();
       const oldPw = document.getElementById('oldPw').value;
       const newPw = document.getElementById('newPw').value;
       const confirm = document.getElementById('confirmPw').value;
+      if (!code || code.length !== 8) { showSnackbar('请输入完整的 8 位验证码'); return; }
       if (!oldPw || !newPw) { showSnackbar('请填写完整'); return; }
       if (newPw.length < 6) { showSnackbar('新密码至少6位'); return; }
       if (newPw !== confirm) { showSnackbar('两次密码不一致'); return; }
       try {
-        await API.request('PUT', '/profile/password', { oldPassword: oldPw, newPassword: newPw });
+        await API.request('PUT', '/profile/password', { code, oldPassword: oldPw, newPassword: newPw });
         showSnackbar('密码已修改');
         closeDialog('pwChangeDialog');
-        document.getElementById('oldPw').value = '';
-        document.getElementById('newPw').value = '';
-        document.getElementById('confirmPw').value = '';
       } catch (e) { showSnackbar(e.message); }
     }
 

@@ -11,7 +11,12 @@ const API = {
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(this.base + path, opts);
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || '请求失败');
+    if (!res.ok) {
+      const err = new Error(data.error || '请求失败');
+      // Preserve extra fields from response (e.g. needs_captcha)
+      for (const k of Object.keys(data)) if (k !== 'error') err[k] = data[k];
+      throw err;
+    }
     return data;
   },
 
@@ -22,6 +27,8 @@ const API = {
   registerByAdmin(username, password, role) { return this.request('POST', '/auth/register-by-admin', { username, password, role }); },
   getUsers() { return this.request('GET', '/auth/users'); },
   deleteUser(id) { return this.request('DELETE', '/auth/users/' + id); },
+  resetUserPassword(id, newPassword) { return this.request('PUT', '/auth/users/' + id + '/password', { newPassword }); },
+  setUserRole(id, role) { return this.request('PUT', '/auth/users/' + id + '/role', { role }); },
 
   // Settings
   getSettings() { return this.request('GET', '/settings'); },
@@ -65,7 +72,7 @@ const API = {
   // Email / SMTP
   testSmtp(email) { return this.request('POST', '/email/test', { email }); },
   sendVerify(email, username) { return this.request('POST', '/email/send-verify', { email, username }); },
-  completeRegister(token, username, password) { return this.request('POST', '/email/complete-register', { token, username, password }); },
+  completeRegister(code, username, password) { return this.request('POST', '/email/complete-register', { code, username, password }); },
 };
 
 function showSnackbar(msg) {

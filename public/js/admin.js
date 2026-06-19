@@ -127,8 +127,6 @@ async function loadSettings() {
     document.getElementById('capLogin').checked = s.captcha_login === '1';
     document.getElementById('capRegister').checked = s.captcha_register === '1';
     document.getElementById('capForum').checked = s.captcha_forum === '1';
-    document.getElementById('capFailed').checked = s.captcha_failed === '1';
-    document.getElementById('capFailedThreshold').value = s.captcha_failed_threshold || '5';
     toggleCaptchaConfig();
   } catch (e) { showSnackbar(e.message); }
 }
@@ -144,8 +142,6 @@ async function saveSettings() {
       captcha_login: document.getElementById('capLogin').checked ? '1' : '0',
       captcha_register: document.getElementById('capRegister').checked ? '1' : '0',
       captcha_forum: document.getElementById('capForum').checked ? '1' : '0',
-      captcha_failed: document.getElementById('capFailed').checked ? '1' : '0',
-      captcha_failed_threshold: document.getElementById('capFailedThreshold').value || '5',
     });
     showSnackbar('设置已保存');
     if (window.NAV) NAV.init();
@@ -386,9 +382,11 @@ async function saveSmtpSettings() {
   } catch (e) { showSnackbar(e.message); }
 }
 async function testSmtp() {
+  const email = prompt('请输入接收测试邮件的邮箱地址：', localStorage.getItem('username') + '@example.com');
+  if (!email) return;
   try {
-    await API.testSmtp();
-    showSnackbar('测试邮件已发送');
+    await API.request('POST', '/email/test', { email });
+    showSnackbar('测试邮件已发送至 ' + email);
   } catch (e) { showSnackbar(e.message); }
 }
 
@@ -486,7 +484,11 @@ async function loadUsers() {
       <td>${u.email_verified ? '<span class="chip" style="cursor:default;font-size:12px;background:var(--md-ref-primary-container)">已验证</span>' : '<span class="chip" style="cursor:default;font-size:12px;background:var(--md-ref-surface-variant)">未验证</span>'}</td>
       <td><span class="chip" style="cursor:default;font-size:12px;background:${u.role==='admin'?'var(--md-ref-primary-container)':'var(--md-ref-surface-variant)'}">${u.role==='admin'?'管理员':'用户'}</span></td>
       <td class="text-muted" style="font-size:13px">${u.created_at}</td>
-      <td><button class="btn btn-text btn-sm" style="color:var(--md-ref-error)" onclick="confirmDelete('user',${u.id},'${escapeHtml(u.username)}')">删除</button></td></tr>`).join('');
+      <td style="white-space:nowrap">
+        <button class="btn btn-text btn-sm" onclick="openResetPw(${u.id},'${escapeHtml(u.username)}')">改密</button>
+        <button class="btn btn-text btn-sm" onclick="openRoleChange(${u.id},'${escapeHtml(u.username)}','${u.role}')">改权</button>
+        <button class="btn btn-text btn-sm" style="color:var(--md-ref-error)" onclick="confirmDelete('user',${u.id},'${escapeHtml(u.username)}')">删除</button>
+      </td></tr>`).join('');
   } catch (e) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">加载失败</td></tr>'; }
 }
 async function saveUser() {
@@ -497,6 +499,46 @@ async function saveUser() {
   try { await API.registerByAdmin(username, password, role); showSnackbar('用户已创建'); closeDialog('userDialog'); document.getElementById('newUsername').value = ''; document.getElementById('newPassword').value = ''; loadUsers(); } catch (e) { showSnackbar(e.message); }
 }
 function openUserDialog() { document.getElementById('newUsername').value = ''; document.getElementById('newPassword').value = ''; document.getElementById('newRole').value = 'user'; openDialog('userDialog'); }
+
+// === User Management Actions ===
+let targetUserId = null;
+
+function openResetPw(id, username) {
+  targetUserId = id;
+  document.getElementById('resetPwUser').textContent = '重置用户 ' + username + ' 的密码';
+  document.getElementById('resetPwInput').value = '';
+  document.getElementById('resetPwConfirm').value = '';
+  openDialog('resetPwDialog');
+}
+
+async function confirmResetPw() {
+  const newPw = document.getElementById('resetPwInput').value;
+  const confirm = document.getElementById('resetPwConfirm').value;
+  if (!newPw || newPw.length < 6) { showSnackbar('密码至少6位'); return; }
+  if (newPw !== confirm) { showSnackbar('两次密码不一致'); return; }
+  try {
+    await API.resetUserPassword(targetUserId, newPw);
+    showSnackbar('密码已重置');
+    closeDialog('resetPwDialog');
+  } catch (e) { showSnackbar(e.message); }
+}
+
+function openRoleChange(id, username, currentRole) {
+  targetUserId = id;
+  document.getElementById('roleUser').textContent = '修改用户 ' + username + ' 的角色';
+  document.getElementById('roleSelect').value = currentRole;
+  openDialog('roleDialog');
+}
+
+async function confirmRoleChange() {
+  const role = document.getElementById('roleSelect').value;
+  try {
+    await API.setUserRole(targetUserId, role);
+    showSnackbar('角色已更新');
+    closeDialog('roleDialog');
+    loadUsers();
+  } catch (e) { showSnackbar(e.message); }
+}
 
 // === Confirm Delete ===
 let pendingDelete = null;

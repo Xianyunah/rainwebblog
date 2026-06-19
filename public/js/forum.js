@@ -122,18 +122,10 @@ function showNewPost() {
   sel.innerHTML = categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
   document.getElementById('postTitle').value = '';
   document.getElementById('postContent').value = '';
-  // Show captcha if needed
-  const capContainer = document.getElementById('forumCaptcha');
-  if (captchaRequiredForForum) {
-    CAPTCHA.renderBuiltin('forumCaptcha');
-  } else {
-    capContainer.style.display = 'none';
-  }
   openDialog('newPostDialog');
 }
 
-let captchaRequiredForForum = false;
-CAPTCHA.checkRequired('forum').then(r => { captchaRequiredForForum = r.required; });
+
 
 async function submitPost() {
   const data = {
@@ -143,14 +135,8 @@ async function submitPost() {
   };
   if (!data.title || !data.content) { showSnackbar('标题和内容不能为空'); return; }
 
-  if (captchaRequiredForForum) {
-    const answer = CAPTCHA.getValue('forumCaptcha');
-    const token = CAPTCHA.getToken();
-    if (!answer || !token) { showSnackbar('请完成验证码'); return; }
-    const verify = await CAPTCHA.verify(answer);
-    if (!verify.success) { showSnackbar(verify.error || '验证码错误'); CAPTCHA.reset('forumCaptcha'); return; }
-    data.captcha_token = token;
-  }
+  const captchaOk = await CAPTCHA.verify('forum');
+  if (!captchaOk) return;
 
   try {
     await API.createForumPost(data);

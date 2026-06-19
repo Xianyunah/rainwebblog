@@ -6,7 +6,7 @@
   <title>注册 - RainWeb</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
   <link rel="stylesheet" href="/css/style.css">
-  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
   <style>
     .register-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
     .register-card { width: 100%; max-width: 420px; padding: 40px 32px; }
@@ -37,8 +37,20 @@
         <input type="password" id="regConfirm" placeholder="再次输入密码" autocomplete="new-password">
       </div>
 
-      <div id="recaptchaContainer" class="g-recaptcha" data-sitekey=""></div>
-  <div id="captchaContainer" style="display:none"></div>
+      <!-- Verification code input (shown after registration) -->
+      <div id="verifySection" style="display:none">
+        <div class="card" style="padding:20px;margin-bottom:16px;text-align:center">
+          <div class="form-group">
+            <label style="font-size:16px;font-weight:600;margin-bottom:8px">邮箱验证码</label>
+            <p class="text-muted" style="font-size:14px;margin-bottom:12px">验证码已发送到您的邮箱，请输入 8 位数字验证码</p>
+            <input type="text" id="verifyCode" placeholder="输入 8 位验证码" maxlength="8" style="text-align:center;font-size:24px;letter-spacing:8px" inputmode="numeric">
+          </div>
+          <button class="btn btn-filled w-full" onclick="handleVerify()">验证并完成注册</button>
+          <button class="btn btn-text btn-sm mt-16" onclick="resendCode()" style="margin-top:8px">重新发送验证码</button>
+        </div>
+      </div>
+
+
       <div id="regError" style="color:var(--md-ref-error);font-size:14px;margin-bottom:12px;display:none"></div>
 
       <button class="btn btn-filled w-full" onclick="handleRegister()" id="regBtn">注册</button>
@@ -59,27 +71,8 @@
   <script src="/js/api.js"></script>
   <script src="/js/captcha.js"></script>
   <script>
-    let captchaRequiredForRegister = false;
     const token = localStorage.getItem('token');
     if (token) window.location.href = '/';
-
-    // Load settings and determine captcha
-    API.getSettings().then(s => {
-      if (s.recaptcha_site_key) {
-        document.getElementById('recaptchaContainer').dataset.sitekey = s.recaptcha_site_key;
-        if (typeof grecaptcha !== 'undefined') grecaptcha.render('recaptchaContainer');
-      } else {
-        document.getElementById('recaptchaContainer').style.display = 'none';
-      }
-    });
-
-    // Check if captcha required for register
-    CAPTCHA.checkRequired('register').then(r => {
-      captchaRequiredForRegister = r.required;
-      if (r.required && r.type === 'builtin') {
-        CAPTCHA.renderBuiltin('captchaContainer');
-      }
-    });
 
     async function handleRegister() {
       const username = document.getElementById('regUsername').value.trim();
@@ -103,30 +96,8 @@
       }
 
       let captcha_token = '';
-      const recaptchaContainer = document.getElementById('recaptchaContainer');
-      if (recaptchaContainer.dataset.sitekey && recaptchaContainer.style.display !== 'none') {
-        captcha_token = grecaptcha.getResponse();
-        if (!captcha_token) {
-          errEl.textContent = '请完成 reCAPTCHA 验证';
-          errEl.style.display = 'block'; return;
-        }
-      }
-      if (captchaRequiredForRegister) {
-        const answer = CAPTCHA.getValue('captchaContainer');
-        const token = CAPTCHA.getToken();
-        if (!answer || !token) {
-          errEl.textContent = '请完成验证码';
-          errEl.style.display = 'block'; return;
-        }
-        const verify = await CAPTCHA.verify(answer);
-        if (!verify.success) {
-          errEl.textContent = verify.error || '验证码错误';
-          errEl.style.display = 'block';
-          CAPTCHA.reset('captchaContainer');
-          return;
-        }
-        captcha_token = token;
-      }
+      const captchaOk = await CAPTCHA.verify('register');
+      if (!captchaOk) return;
 
       errEl.style.display = 'none';
       btn.disabled = true;
@@ -135,11 +106,12 @@
       try {
         const data = await API.register(username, password, email, captcha_token);
         if (data.requires_verification) {
-          // Show verification sent message
-          errEl.style.color = 'var(--md-ref-primary)';
-          errEl.textContent = '验证邮件已发送到 ' + email + '，请查收并完成验证。';
-          errEl.style.display = 'block';
-          btn.textContent = '已发送验证邮件';
+          // Show verification code input
+          document.getElementById('verifySection').style.display = 'block';
+          document.getElementById('regBtn').style.display = 'none';
+          document.querySelectorAll('.form-group:not(#verifySection .form-group)').forEach(el => el.style.display = 'none');
+          document.querySelector('.subtitle').textContent = '请输入邮箱中的验证码';
+          errEl.style.display = 'none';
         } else {
           showSnackbar('注册成功，请登录');
           setTimeout(() => window.location.href = '/login.html', 1000);
@@ -152,6 +124,35 @@
         btn.textContent = '注册';
         if (recaptchaContainer.dataset.sitekey) grecaptcha.reset();
       }
+    }
+
+    async function handleVerify() {
+      const code = document.getElementById('verifyCode').value.trim();
+      const username = document.getElementById('regUsername').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const errEl = document.getElementById('regError');
+      if (!code || code.length !== 8) {
+        errEl.textContent = '请输入完整的 8 位验证码';
+        errEl.style.display = 'block'; return;
+      }
+      errEl.style.display = 'none';
+      try {
+        const data = await API.completeRegister(code, username, password);
+        showSnackbar('注册成功，请登录');
+        setTimeout(() => window.location.href = '/login.html', 1000);
+      } catch (e) {
+        errEl.textContent = e.message;
+        errEl.style.display = 'block';
+      }
+    }
+
+    async function resendCode() {
+      const email = document.getElementById('regEmail').value.trim();
+      const username = document.getElementById('regUsername').value.trim();
+      try {
+        await API.sendVerify(email, username);
+        showSnackbar('验证码已重新发送');
+      } catch (e) { showSnackbar(e.message); }
     }
   </script>
 </body>

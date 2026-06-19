@@ -13,7 +13,7 @@
 <body>
   <div class="embed-page">
     <div class="embed-toolbar">
-      <a href="/" class="btn-icon"><span class="material-icons">close</span></a>
+      <a href="/" class="btn-icon" id="closeBtn"><span class="material-icons">close</span></a>
       <span class="embed-title" id="embedTitle">加载中...</span>
       <a id="originalLink" href="#" target="_blank" class="btn btn-text btn-sm" title="在新标签页中打开">
         <span class="material-icons">open_in_new</span> 原站
@@ -33,6 +33,14 @@
       document.getElementById('embedFrame').src = url;
       document.getElementById('originalLink').href = url;
     }
+    // Close/back: return to previous page, fallback to homepage
+    document.querySelector('.embed-toolbar a:first-child').onclick = function(e) {
+      if (document.referrer && document.referrer !== location.href) {
+        e.preventDefault();
+        history.back();
+      }
+      // otherwise use default href which goes to /
+    };
   </script>
 </body>
 </html>

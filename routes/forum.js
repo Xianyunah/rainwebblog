@@ -70,11 +70,6 @@ router.get('/posts/:id', (req, res) => {
 router.post('/posts', authMiddleware, (req, res) => {
   const { category_id, title, content, captcha_token } = req.body;
   if (!title || !content) return res.status(400).json({ error: '标题和内容不能为空' });
-  // Check captcha for forum posting
-  const captchaSetting = db.getSetting('captcha_forum');
-  if (captchaSetting === '1' && !captcha_token) {
-    return res.status(400).json({ error: '请完成验证码验证', needs_captcha: true });
-  }
   const id = db.run(
     'INSERT INTO forum_posts (category_id, title, content, author_id) VALUES (?, ?, ?, ?)',
     [category_id, title, content, req.user.id]);

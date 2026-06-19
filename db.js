@@ -128,8 +128,6 @@ function seedDefaults() {
     captcha_register: '0',
     captcha_forum: '0',
     captcha_type: 'builtin',
-    captcha_failed: '0',
-    captcha_failed_threshold: '5',
   };
   for (const [k, v] of Object.entries(defaults)) {
     if (!get('SELECT value FROM site_settings WHERE key = ?', [k])) {
