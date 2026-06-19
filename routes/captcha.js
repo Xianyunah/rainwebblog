@@ -54,24 +54,34 @@ function generateSvgCaptcha(answer) {
 
 // Generate captcha
 router.get('/image', (req, res) => {
-  const answer = generateAnswer(5);
-  const token = crypto.randomBytes(16).toString('hex');
-  captchaStore.set(token, { answer, expires: Date.now() + 300000 }); // 5 min
-  const svg = generateSvgCaptcha(answer);
-  res.json({ token, svg, expires_in: 300 });
+  try {
+    const answer = generateAnswer(5);
+    const token = crypto.randomBytes(16).toString('hex');
+    captchaStore.set(token, { answer, expires: Date.now() + 300000 }); // 5 min
+    const svg = generateSvgCaptcha(answer);
+    res.json({ token, svg, expires_in: 300 });
+  } catch (e) {
+    console.error('Captcha generation error:', e.message);
+    res.status(500).json({ error: '验证码生成失败' });
+  }
 });
 
 // Verify captcha
 router.post('/verify', (req, res) => {
-  const { token, answer } = req.body;
-  if (!token || !answer) return res.json({ success: false, error: '参数不完整' });
-  const entry = captchaStore.get(token);
-  if (!entry) return res.json({ success: false, error: '验证码已过期' });
-  captchaStore.delete(token);
-  if (entry.answer.toLowerCase() === answer.toLowerCase()) {
-    res.json({ success: true });
-  } else {
-    res.json({ success: false, error: '验证码错误' });
+  try {
+    const { token, answer } = req.body;
+    if (!token || !answer) return res.json({ success: false, error: '参数不完整' });
+    const entry = captchaStore.get(token);
+    if (!entry) return res.json({ success: false, error: '验证码已过期，请刷新' });
+    captchaStore.delete(token);
+    if (entry.answer.toLowerCase() === String(answer).toLowerCase().trim()) {
+      res.json({ success: true });
+    } else {
+      res.json({ success: false, error: '验证码错误' });
+    }
+  } catch (e) {
+    console.error('Captcha verify error:', e.message);
+    res.json({ success: false, error: '验证失败' });
   }
 });
 

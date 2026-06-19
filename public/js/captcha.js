@@ -56,7 +56,11 @@ const CAPTCHA = {
           imgContainer.innerHTML = data.svg;
           const svg = imgContainer.querySelector('svg');
           if (svg) svg.style.cssText = 'width:100%;max-width:240px;height:auto;border-radius:8px;display:block';
-        } catch {}
+          errEl.style.display = 'none';
+        } catch (e) {
+          errEl.textContent = '加载验证码失败: ' + (e.message || '网络错误');
+          errEl.style.display = 'block';
+        }
       };
       await loadImage();
 
@@ -100,41 +104,48 @@ const CAPTCHA = {
     });
   },
 
-  // reCAPTCHA modal
+  // reCAPTCHA verification - separate, standalone
   _showRecaptchaModal() {
     return new Promise((resolve) => {
       this._removeModal();
+      const siteKey = window._recaptchaSiteKey || '';
+      if (!siteKey) { resolve(false); return; }
+
       const overlay = document.createElement('div');
       overlay.className = 'dialog-overlay active';
       overlay.style.cssText = 'display:flex;z-index:9999';
       overlay.innerHTML = `
         <div class="dialog" style="max-width:400px;text-align:center">
           <h3 style="margin-bottom:16px">请完成验证</h3>
-          <div id="recaptchaModalWidget" style="display:flex;justify-content:center;margin:16px 0"></div>
+          <div id="recaptchaWidgetContainer" style="display:flex;justify-content:center;margin:16px 0"></div>
+          <p id="recaptchaStatus" class="text-muted" style="font-size:13px">正在加载...</p>
           <div class="actions" style="justify-content:center">
-            <button class="btn btn-filled" id="recaptchaModalConfirm" disabled>验证</button>
-            <button class="btn btn-text" id="recaptchaModalCancel">取消</button>
+            <button class="btn btn-text" id="recaptchaCancelBtn">取消</button>
           </div>
         </div>`;
       document.body.appendChild(overlay);
       this.modalOverlay = overlay;
 
-      const siteKey = window._recaptchaSiteKey || '';
-      const widgetDiv = overlay.querySelector('#recaptchaModalWidget');
-      const confirmBtn = overlay.querySelector('#recaptchaModalConfirm');
+      const widgetDiv = overlay.querySelector('#recaptchaWidgetContainer');
+      const statusEl = overlay.querySelector('#recaptchaStatus');
 
-      if (!siteKey) {
-        widgetDiv.innerHTML = '<span class="text-muted">reCAPTCHA 未配置</span>';
-        return;
-      }
+      let resolved = false;
+      const done = (ok) => { if (!resolved) { resolved = true; this._removeModal(); resolve(ok); } };
+      overlay.querySelector('#recaptchaCancelBtn').onclick = () => done(false);
 
+      // Render the reCAPTCHA widget, auto-resolve on success
       const renderWidget = () => {
         try {
           grecaptcha.render(widgetDiv, {
             sitekey: siteKey,
-            callback: () => { confirmBtn.disabled = false; }
+            callback: () => { statusEl.textContent = '验证通过'; setTimeout(() => done(true), 300); },
+            'expired-callback': () => { statusEl.textContent = '验证已过期，请重新验证'; },
           });
-        } catch {}
+          statusEl.textContent = '请点击验证框';
+        } catch (e) {
+          statusEl.textContent = 'reCAPTCHA 加载失败';
+          setTimeout(() => done(false), 2000);
+        }
       };
 
       if (typeof grecaptcha !== 'undefined') {
@@ -149,18 +160,6 @@ const CAPTCHA = {
           document.head.appendChild(s);
         }
       }
-
-      confirmBtn.onclick = () => {
-        const resp = typeof grecaptcha !== 'undefined' ? grecaptcha.getResponse() : '';
-        if (resp) {
-          this._removeModal();
-          resolve(true);
-        }
-      };
-      overlay.querySelector('#recaptchaModalCancel').onclick = () => {
-        this._removeModal();
-        resolve(false);
-      };
     });
   },
 
