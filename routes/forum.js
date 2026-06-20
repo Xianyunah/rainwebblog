@@ -9,21 +9,23 @@ router.get('/categories', (req, res) => {
 });
 
 router.post('/categories', authMiddleware, (req, res) => {
-  const { name, description, sort_order } = req.body;
+  const { name, description, sort_order, announcement, sub_categories } = req.body;
   if (!name) return res.status(400).json({ error: '名称不能为空' });
   const existing = db.get('SELECT id FROM forum_categories WHERE name = ?', [name]);
   if (existing) return res.status(400).json({ error: '分类已存在' });
-  const id = db.run('INSERT INTO forum_categories (name, description, sort_order) VALUES (?, ?, ?)',
-    [name, description || '', sort_order || 0]);
+  const sc = Array.isArray(sub_categories) ? sub_categories.join(',') : (sub_categories || '');
+  const id = db.run('INSERT INTO forum_categories (name, description, sort_order, announcement, sub_categories) VALUES (?, ?, ?, ?, ?)',
+    [name, description || '', sort_order || 0, announcement || '', sc]);
   res.json(db.get('SELECT * FROM forum_categories WHERE id = ?', [id]));
 });
 
 router.put('/categories/:id', authMiddleware, (req, res) => {
-  const { name, description, sort_order } = req.body;
+  const { name, description, sort_order, announcement, sub_categories } = req.body;
   const existing = db.get('SELECT id FROM forum_categories WHERE id = ?', [req.params.id]);
   if (!existing) return res.status(404).json({ error: '分类不存在' });
-  db.run('UPDATE forum_categories SET name=?, description=?, sort_order=? WHERE id=?',
-    [name || '', description || '', sort_order || 0, req.params.id]);
+  const sc = Array.isArray(sub_categories) ? sub_categories.join(',') : (sub_categories || '');
+  db.run('UPDATE forum_categories SET name=?, description=?, sort_order=?, announcement=?, sub_categories=? WHERE id=?',
+    [name || '', description || '', sort_order || 0, announcement || '', sc, req.params.id]);
   res.json(db.get('SELECT * FROM forum_categories WHERE id = ?', [req.params.id]));
 });
 
@@ -68,11 +70,11 @@ router.get('/posts/:id', (req, res) => {
 });
 
 router.post('/posts', authMiddleware, (req, res) => {
-  const { category_id, title, content, use_markdown } = req.body;
+  const { category_id, title, content, use_markdown, sub_category } = req.body;
   if (!title || !content) return res.status(400).json({ error: '标题和内容不能为空' });
   const id = db.run(
-    'INSERT INTO forum_posts (category_id, title, content, author_id, use_markdown) VALUES (?, ?, ?, ?, ?)',
-    [category_id, title, content, req.user.id, use_markdown !== undefined ? (use_markdown ? 1 : 0) : 1]);
+    'INSERT INTO forum_posts (category_id, title, content, author_id, use_markdown, sub_category) VALUES (?, ?, ?, ?, ?, ?)',
+    [category_id, title, content, req.user.id, use_markdown !== undefined ? (use_markdown ? 1 : 0) : 1, sub_category || '']);
   const post = db.get(
     `SELECT fp.*, u.username as author_name
      FROM forum_posts fp LEFT JOIN users u ON fp.author_id = u.id

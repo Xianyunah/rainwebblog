@@ -330,27 +330,6 @@ async function uploadWallpaper() {
   } catch (e) { showSnackbar(e.message); }
 }
 
-async function saveThemeSettings() {
-  try {
-    const data = {
-      theme_preset: window._selectedPreset || 'default',
-      theme_wallpaper: document.getElementById('setWallpaper').value.trim(),
-      theme_wallpaper_scale: document.getElementById('setWallpaperScale').value,
-      nav_style: window._navStyle || 'default',
-      card_style: window._cardStyle || 'default',
-      glass_blur: document.getElementById('setGlassBlur').value,
-      glass_opacity: document.getElementById('setGlassOpacity').value,
-    };
-    // Also include primary_color if changed by preset
-    const colorInput = document.getElementById('setPrimaryColor');
-    if (colorInput) data.primary_color = colorInput.value;
-
-    await API.saveSettings(data);
-    showSnackbar('主题设置已保存');
-    if (window.NAV) NAV.init(); // refresh
-  } catch (e) { showSnackbar(e.message); }
-}
-
 // === Background Color ===
 function applyBgColor(color) {
   document.body.style.setProperty('--md-ref-background', color);
@@ -400,8 +379,8 @@ async function loadForumCats() {
   const tbody = document.getElementById('forumCatsBody');
   try {
     const cats = await API.getForumCategories();
-    tbody.innerHTML = cats.length === 0 ? '<tr><td colspan="4" class="text-center text-muted">暂无分类</td></tr>' :
-      cats.map(c => `<tr><td><strong>${escapeHtml(c.name)}</strong></td><td class="text-muted">${escapeHtml(c.description||'')}</td><td>${c.sort_order}</td>
+    tbody.innerHTML = cats.length === 0 ? '<tr><td colspan="5" class="text-center text-muted">暂无板块</td></tr>' :
+      cats.map(c => `<tr><td><strong>${escapeHtml(c.name)}</strong></td><td class="text-muted">${escapeHtml(c.description||'')}</td><td class="text-muted" style="font-size:13px">${c.announcement ? escapeHtml(c.announcement.substring(0,30)) + (c.announcement.length>30?'...':'') : '-'}</td><td>${c.sort_order}</td>
         <td><button class="btn btn-text btn-sm" onclick="editForumCat(${c.id})">编辑</button><button class="btn btn-text btn-sm" style="color:var(--md-ref-error)" onclick="confirmDelete('forumcat',${c.id},'${escapeHtml(c.name)}')">删除</button></td></tr>`).join('');
   } catch (e) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">加载失败</td></tr>'; }
 }
@@ -421,9 +400,23 @@ function openForumCatDialog(data) {
   document.getElementById('forumCatId').value = data ? data.id : '';
   document.getElementById('forumCatName').value = data ? data.name : '';
   document.getElementById('forumCatDesc').value = data ? (data.description || '') : '';
+  document.getElementById('forumCatAnnounce').value = data ? (data.announcement || '') : '';
+  document.getElementById('forumCatSubCats').value = data ? (data.sub_categories || '') : '';
   document.getElementById('forumCatSort').value = data ? data.sort_order : 0;
-  document.getElementById('forumCatDialogTitle').textContent = data ? '编辑分类' : '添加分类';
+  document.getElementById('forumCatDialogTitle').textContent = data ? '编辑板块' : '添加板块';
   openDialog('forumCatDialog');
+}
+async function saveForumCat() {
+  const id = document.getElementById('forumCatId').value;
+  const data = {
+    name: document.getElementById('forumCatName').value.trim(),
+    description: document.getElementById('forumCatDesc').value.trim(),
+    announcement: document.getElementById('forumCatAnnounce').value.trim(),
+    sub_categories: document.getElementById('forumCatSubCats').value.trim(),
+    sort_order: parseInt(document.getElementById('forumCatSort').value) || 0
+  };
+  if (!data.name) { showSnackbar('名称不能为空'); return; }
+  try { if (id) await API.updateForumCategory(id, data); else await API.createForumCategory(data); showSnackbar('保存成功'); closeDialog('forumCatDialog'); loadForumCats(); } catch (e) { showSnackbar(e.message); }
 }
 async function saveForumCat() {
   const id = document.getElementById('forumCatId').value;
@@ -579,6 +572,47 @@ async function uploadBlogFile() {
     } catch (e) { showSnackbar(e.message); }
   };
   input.click();
+}
+
+// === Check for Updates ===
+async function checkUpdate() {
+  const statusEl = document.getElementById('updateStatus');
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '<div class="loading" style="padding:8px"><div class="spinner" style="width:16px;height:16px"></div> 检查中...</div>';
+  try {
+    const r = await API.request('GET', '/update/check');
+    document.getElementById('localVersion').textContent = r.local || '?';
+    document.getElementById('remoteVersion').textContent = r.remote || '连接失败';
+    if (r.hasUpdate) {
+      statusEl.innerHTML = '<div style="color:var(--md-ref-primary);font-weight:500">📦 发现新版本 ' + r.remote + '，点击下方按钮更新</div>';
+      document.getElementById('updateBtn').style.display = 'inline-flex';
+    } else if (r.remote) {
+      statusEl.innerHTML = '<div style="color:var(--md-ref-on-surface-variant)">✅ 已是最新版本</div>';
+      document.getElementById('updateBtn').style.display = 'none';
+    } else {
+      statusEl.innerHTML = '<div style="color:var(--md-ref-error)">❌ ' + (r.error || '检查失败') + '</div>';
+    }
+  } catch (e) {
+    statusEl.innerHTML = '<div style="color:var(--md-ref-error)">❌ ' + e.message + '</div>';
+  }
+}
+
+async function runUpdate() {
+  if (!confirm('确定要更新吗？更新完成后需要手动重启服务。')) return;
+  const statusEl = document.getElementById('updateStatus');
+  const btn = document.getElementById('updateBtn');
+  btn.disabled = true;
+  btn.textContent = '更新中...';
+  statusEl.innerHTML = '<div class="loading" style="padding:8px"><div class="spinner" style="width:16px;height:16px"></div> 下载并安装更新...</div>';
+  try {
+    const r = await API.request('POST', '/update/run');
+    statusEl.innerHTML = '<div style="color:var(--md-ref-primary);font-weight:500">✅ ' + r.message + '</div>';
+    btn.style.display = 'none';
+  } catch (e) {
+    statusEl.innerHTML = '<div style="color:var(--md-ref-error)">❌ ' + e.message + '</div>';
+    btn.disabled = false;
+    btn.textContent = '立即更新';
+  }
 }
 
 // === Data Import ===

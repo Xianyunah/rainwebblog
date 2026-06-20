@@ -32,7 +32,7 @@ app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: 0,
   setHeaders(res, path) {
-    if (path.endsWith('.html')) {
+    if (path.endsWith('.html') || path.endsWith('.js')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     }
   }
@@ -54,9 +54,82 @@ app.use('/api/setup', setupRoutes);
 app.use('/api/proxy', proxyRoutes);
 app.use('/api/import', importRoutes);
 
-// Version info
+// Version & Update
 const version = require('fs').readFileSync('./VERSION', 'utf8').trim();
 app.get('/api/version', (req, res) => res.json({ version }));
+
+app.get('/api/update/check', async (req, res) => {
+  const https = require('https');
+  const tryFetch = (url) => new Promise((resolve, reject) => {
+    https.get(url, { headers: { 'User-Agent': 'RainWeb' } }, (r) => {
+      let b = ''; r.on('data', c => b += c); r.on('end', () => resolve(b.trim()));
+    }).on('error', reject);
+  });
+  try {
+    const remote = await tryFetch('https://raw.githubusercontent.com/Xianyunah/rainwebblog/master/VERSION');
+    const local = require('fs').readFileSync('./VERSION', 'utf8').trim();
+    res.json({ local, remote, hasUpdate: remote !== local });
+  } catch (e) {
+    try {
+      const remote = await tryFetch('https://api.github.com/repos/Xianyunah/rainwebblog/contents/VERSION');
+      const local = require('fs').readFileSync('./VERSION', 'utf8').trim();
+      res.json({ local, remote, hasUpdate: remote !== local });
+    } catch (e2) {
+      res.json({ local: version, remote: null, error: '无法检查更新', hasUpdate: false });
+    }
+  }
+});
+
+app.post('/api/update/run', async (req, res) => {
+  const https = require('https');
+  const fs = require('fs');
+  const path = require('path');
+  const { execSync } = require('child_process');
+  const tmpDir = path.join(__dirname, '.update-tmp');
+
+  try {
+    if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
+    fs.mkdirSync(tmpDir, { recursive: true });
+
+    // Download latest source zip
+    const zipPath = path.join(tmpDir, 'update.zip');
+    await new Promise((resolve, reject) => {
+      const f = fs.createWriteStream(zipPath);
+      https.get('https://github.com/Xianyunah/rainwebblog/archive/refs/heads/master.zip', (r) => {
+        r.pipe(f); f.on('finish', resolve);
+      }).on('error', reject);
+    });
+
+    // Extract
+    const extractDir = path.join(tmpDir, 'extracted');
+    fs.mkdirSync(extractDir, { recursive: true });
+    execSync(`unzip -o "${zipPath}" -d "${extractDir}"`, { stdio: 'pipe', timeout: 30000 });
+
+    // Find inner dir
+    const items = fs.readdirSync(extractDir).filter(f => fs.statSync(path.join(extractDir, f)).isDirectory());
+    const srcDir = path.join(extractDir, items[0] || '.');
+
+    // Copy files excluding local data
+    const exclude = ['data', 'uploads', 'node_modules', '.env.json', 'server.pid', 'releases'];
+    const cp = (s, d) => {
+      fs.readdirSync(s).forEach(f => {
+        if (exclude.includes(f)) return;
+        const src = path.join(s, f), dest = path.join(d, f);
+        if (fs.statSync(src).isDirectory()) { if (!fs.existsSync(dest)) fs.mkdirSync(dest); cp(src, dest); }
+        else fs.copyFileSync(src, dest);
+      });
+    };
+    cp(srcDir, __dirname);
+    fs.rmSync(tmpDir, { recursive: true });
+
+    // Run npm install
+    execSync('npm install', { cwd: __dirname, stdio: 'pipe', timeout: 60000 });
+
+    res.json({ message: '更新完成，请重启服务生效' });
+  } catch (e) {
+    res.status(500).json({ error: '更新失败: ' + e.message });
+  }
+});
 
 // Global error handler
 app.use((err, req, res, next) => {

@@ -64,17 +64,22 @@ function initTables() {
 
   db.run(`CREATE TABLE IF NOT EXISTS forum_categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL,
-    description TEXT DEFAULT '', sort_order INTEGER DEFAULT 0)`);
+    description TEXT DEFAULT '', sort_order INTEGER DEFAULT 0,
+    announcement TEXT DEFAULT '', sub_categories TEXT DEFAULT '')`);
+  try { db.run('ALTER TABLE forum_categories ADD COLUMN announcement TEXT DEFAULT ""'); } catch {}
+  try { db.run('ALTER TABLE forum_categories ADD COLUMN sub_categories TEXT DEFAULT ""'); } catch {}
 
   db.run(`CREATE TABLE IF NOT EXISTS forum_posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT, category_id INTEGER NOT NULL,
     title TEXT NOT NULL, content TEXT NOT NULL, author_id INTEGER NOT NULL,
-    use_markdown INTEGER DEFAULT 1,
+    use_markdown INTEGER DEFAULT 1, sub_category TEXT DEFAULT '',
     created_at DATETIME DEFAULT (datetime('now')),
     updated_at DATETIME DEFAULT (datetime('now')),
     FOREIGN KEY (category_id) REFERENCES forum_categories(id),
     FOREIGN KEY (author_id) REFERENCES users(id))`);
   try { db.run('ALTER TABLE forum_posts ADD COLUMN use_markdown INTEGER DEFAULT 1'); } catch {}
+  try { db.run('ALTER TABLE forum_posts ADD COLUMN sub_category TEXT DEFAULT ""'); } catch {}
+  try { db.run('ALTER TABLE forum_posts ADD COLUMN tags TEXT DEFAULT ""'); } catch {}
 
   db.run(`CREATE TABLE IF NOT EXISTS blog_comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL,
@@ -213,8 +218,8 @@ function seedSampleData() {
   if (adminUser) {
     const aid = adminUser.id;
     // Forum posts
-    run('INSERT INTO forum_posts (category_id, title, content, author_id) VALUES (?, ?, ?, ?)', [1, '欢迎来到论坛', '这是论坛的第一篇帖子！欢迎大家交流讨论。', aid]);
-    run('INSERT INTO forum_posts (category_id, title, content, author_id) VALUES (?, ?, ?, ?)', [2, '今天天气真不错', '大家今天过得怎么样？来聊聊吧！', aid]);
+    run('INSERT INTO forum_posts (category_id, title, content, author_id, sub_category) VALUES (?, ?, ?, ?, ?)', [1, '欢迎来到论坛', '这是论坛的第一篇帖子！欢迎大家交流讨论。', aid, '分享']);
+    run('INSERT INTO forum_posts (category_id, title, content, author_id, sub_category) VALUES (?, ?, ?, ?, ?)', [2, '今天天气真不错', '大家今天过得怎么样？来聊聊吧！', aid, '讨论']);
 
     // Blog posts
     const blogMarkdown = `## 欢迎使用 RainWeb\n\nRainWeb 是一个多功能的个人云平台，集成了 **博客、论坛、密码管理器** 等功能。\n\n- 🎨 Material Design 3 风格\n- 🌓 深色/浅色主题切换\n- 📧 邮箱验证注册\n- 🔒 密码管理器 (AES-256-GCM 加密)\n\n### 快速开始\n\n1. 点击右上角「登录」使用默认账号 \`admin / admin123\`\n2. 在管理后台配置 SMTP 邮件和 reCAPTCHA\n3. 在「面板链接」中添加你的各个管理后台\n4. 发布你的第一篇博客文章！`;

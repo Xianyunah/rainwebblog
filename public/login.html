@@ -23,8 +23,11 @@
         <div class="password-wrapper"><input type="password" id="password" placeholder="输入密码" autocomplete="current-password">
           <button class="toggle-pw" type="button" onclick="togglePw(this)" tabindex="-1"><span class="material-icons" style="font-size:20px">visibility_off</span></button></div>
       </div>
-      <div id="captchaContainer" style="display:none"></div>
       <div id="loginError" style="color:var(--md-ref-error);font-size:14px;margin-bottom:12px;display:none"></div>
+      <button class="btn w-full" id="capBtn" onclick="doCaptcha()" style="display:none;margin-bottom:8px;background:#fff;color:#333;border:1px solid #333;justify-content:center;height:44px">
+        <span class="material-icons" id="capBtnIcon" style="font-size:20px">verified_user</span>
+        <span id="capBtnText">点击进行人机验证</span>
+      </button>
       <button class="btn btn-filled w-full" onclick="handleLogin()" id="loginBtn">登录</button>
       <div style="text-align:center;margin-top:16px">
         <span class="text-muted">没有账户？</span>
@@ -44,9 +47,14 @@
     const token = localStorage.getItem('token');
     if (token) window.location.href = '/';
 
-    // Check and render inline captcha on page load
+    let captchaNeeded = false;
+
+    // Check if captcha is needed on page load
     CAPTCHA.checkRequired('login').then(r => {
-      if (r.required) CAPTCHA.renderInline('captchaContainer');
+      if (r.required) {
+        captchaNeeded = true;
+        document.getElementById('capBtn').style.display = 'inline-flex';
+      }
     });
 
     function togglePw(btn) {
@@ -56,6 +64,18 @@
       else { input.type = 'password'; icon.textContent = 'visibility_off'; }
     }
 
+    async function doCaptcha() {
+      const ok = await CAPTCHA.showModal('login');
+      if (ok) {
+        document.getElementById('capBtn').style.background = '#e8f5e9';
+        document.getElementById('capBtn').style.borderColor = '#4caf50';
+        document.getElementById('capBtn').style.color = '#2e7d32';
+        document.getElementById('capBtnIcon').textContent = 'check_circle';
+        document.getElementById('capBtnText').textContent = '验证通过';
+        document.getElementById('capBtn').disabled = true;
+      }
+    }
+
     async function handleLogin() {
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
@@ -63,18 +83,9 @@
       const btn = document.getElementById('loginBtn');
       if (!username || !password) { errEl.textContent = '请输入用户名和密码'; errEl.style.display = 'block'; return; }
 
-      // Check inline captcha
-      const capContainer = document.getElementById('captchaContainer');
-      if (capContainer.style.display !== 'none') {
-        const val = CAPTCHA.getInlineValue();
-        if (CAPTCHA.type === 'builtin') {
-          const token = CAPTCHA.getToken();
-          if (!val || !token) { errEl.textContent = '请完成验证码'; errEl.style.display = 'block'; return; }
-          const verify = await CAPTCHA.verify(val);
-          if (!verify.success) { errEl.textContent = verify.error || '验证码错误'; errEl.style.display = 'block'; CAPTCHA.resetInline(); return; }
-        } else if (CAPTCHA.type === 'recaptcha' && !val) {
-          errEl.textContent = '请完成 reCAPTCHA 验证'; errEl.style.display = 'block'; return;
-        }
+      if (captchaNeeded && !CAPTCHA.verified) {
+        errEl.textContent = '请先点击验证按钮完成验证';
+        errEl.style.display = 'block'; return;
       }
 
       errEl.style.display = 'none';
