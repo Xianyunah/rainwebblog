@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
-const DB_PATH = path.join(__dirname, 'data.db');
+const DB_PATH = path.join(__dirname, 'data', 'rainweb.db');
 let db = null;
 
 async function getDb() {
@@ -64,10 +64,18 @@ function initTables() {
   db.run(`CREATE TABLE IF NOT EXISTS forum_posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT, category_id INTEGER NOT NULL,
     title TEXT NOT NULL, content TEXT NOT NULL, author_id INTEGER NOT NULL,
+    use_markdown INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT (datetime('now')),
     updated_at DATETIME DEFAULT (datetime('now')),
     FOREIGN KEY (category_id) REFERENCES forum_categories(id),
     FOREIGN KEY (author_id) REFERENCES users(id))`);
+  try { db.run('ALTER TABLE forum_posts ADD COLUMN use_markdown INTEGER DEFAULT 1'); } catch {}
+
+  db.run(`CREATE TABLE IF NOT EXISTS blog_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL,
+    content TEXT NOT NULL, author_id INTEGER,
+    author_name TEXT DEFAULT '', created_at DATETIME DEFAULT (datetime('now')),
+    FOREIGN KEY (post_id) REFERENCES blog_posts(id))`);
 
   db.run(`CREATE TABLE IF NOT EXISTS forum_replies (
     id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL,
@@ -97,8 +105,23 @@ function initTables() {
     updated_at DATETIME DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id))`);
 
+  db.run(`CREATE TABLE IF NOT EXISTS attachments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, filename TEXT NOT NULL,
+    original_name TEXT NOT NULL, size INTEGER NOT NULL,
+    mime_type TEXT DEFAULT '', user_id INTEGER NOT NULL,
+    ref_type TEXT DEFAULT '', ref_id INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id))`);
+
   db.run(`CREATE TABLE IF NOT EXISTS site_settings (
     key TEXT PRIMARY KEY, value TEXT DEFAULT '')`);
+
+  // Indexes for performance
+  db.run('CREATE INDEX IF NOT EXISTS idx_blog_published ON blog_posts(published)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_forum_posts_category ON forum_posts(category_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_forum_replies_post ON forum_replies(post_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_password_user ON password_entries(user_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_attachments_ref ON attachments(ref_type, ref_id)');
 }
 
 function seedAdmin() {

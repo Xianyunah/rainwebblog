@@ -20,6 +20,12 @@
       </a>
       <button class="btn-icon" onclick="toggleTheme()"><span class="material-icons">dark_mode</span></button>
     </div>
+    <div id="embedHint" style="display:none;padding:8px 16px;background:var(--md-ref-primary-container);color:var(--md-ref-on-primary-container);font-size:13px;text-align:center;flex-shrink:0">
+      无法嵌入？试试安装
+      <a href="https://chromewebstore.google.com/search/ignore%20x-frame" target="_blank" style="color:inherit;font-weight:600;text-decoration:underline">Ignore X-Frame-Headers</a>
+      扩展，或点击右上角「原站」在新标签页打开
+      <span onclick="this.parentElement.style.display='none'" style="cursor:pointer;margin-left:8px;font-weight:600">✕</span>
+    </div>
     <iframe class="embed-container" id="embedFrame" sandbox="allow-scripts allow-forms allow-same-origin allow-popups" loading="lazy"></iframe>
   </div>
 
@@ -32,13 +38,21 @@
 
     if (url) {
       document.getElementById('embedTitle').textContent = title;
-      // When proxy is requested, fetch through our server to bypass X-Frame-Options
-      if (useProxy) {
+      const isHttpsPage = location.protocol === 'https:';
+      const isHttpTarget = url.startsWith('http:');
+      const needsProxy = useProxy || (isHttpsPage && isHttpTarget);
+
+      if (needsProxy) {
         document.getElementById('embedFrame').src = '/api/proxy/fetch?url=' + encodeURIComponent(url);
         document.getElementById('originalLink').href = url;
       } else {
         document.getElementById('embedFrame').src = url;
         document.getElementById('originalLink').href = url;
+        // Show "安装扩展" hint if iframe likely blocked by X-Frame-Options
+        setTimeout(() => {
+          const hint = document.getElementById('embedHint');
+          if (hint && !needsProxy) hint.style.display = 'block';
+        }, 2000);
       }
     }
 

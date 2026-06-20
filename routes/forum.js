@@ -68,11 +68,11 @@ router.get('/posts/:id', (req, res) => {
 });
 
 router.post('/posts', authMiddleware, (req, res) => {
-  const { category_id, title, content, captcha_token } = req.body;
+  const { category_id, title, content, use_markdown } = req.body;
   if (!title || !content) return res.status(400).json({ error: '标题和内容不能为空' });
   const id = db.run(
-    'INSERT INTO forum_posts (category_id, title, content, author_id) VALUES (?, ?, ?, ?)',
-    [category_id, title, content, req.user.id]);
+    'INSERT INTO forum_posts (category_id, title, content, author_id, use_markdown) VALUES (?, ?, ?, ?, ?)',
+    [category_id, title, content, req.user.id, use_markdown !== undefined ? (use_markdown ? 1 : 0) : 1]);
   const post = db.get(
     `SELECT fp.*, u.username as author_name
      FROM forum_posts fp LEFT JOIN users u ON fp.author_id = u.id

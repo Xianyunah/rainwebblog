@@ -1,5 +1,4 @@
 let currentTab = 'panels';
-let useMarkdown = 1;
 
 function escapeHtml(t) {
   const d = document.createElement('div');
@@ -27,7 +26,7 @@ function switchTab(tab) {
     ({ panels: '管理面板', links: '面板链接', settings: '站点设置', forum: '论坛管理', blog: '博客管理', users: '用户管理', email: '邮件配置' })[tab] || '管理面板';
   document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
   document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).style.display = 'block';
-  const actions = { panels: loadPanels, links: loadLinks, settings: loadSettings, theme: loadThemeSettings, forum: () => { loadForumCats(); loadForumPosts(); }, blog: loadBlogPosts, users: loadUsers, email: loadEmailSettings };
+  const actions = { panels: loadPanels, links: loadLinks, settings: loadSettings, theme: loadThemeSettings, attachments: loadAttachments, forum: () => { loadForumCats(); loadForumPosts(); }, blog: loadBlogPosts, users: loadUsers, email: loadEmailSettings };
   if (actions[tab]) actions[tab]();
 }
 
@@ -450,20 +449,12 @@ async function loadBlogPosts() {
         <td><button class="btn btn-text btn-sm" onclick="editBlogPost(${p.id})">编辑</button><button class="btn btn-text btn-sm" style="color:var(--md-ref-error)" onclick="confirmDelete('blog',${p.id},'${escapeHtml(p.title)}')">删除</button></td></tr>`).join('');
   } catch (e) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">加载失败</td></tr>'; }
 }
-function setMarkdown(val) { useMarkdown = val; document.getElementById('toggleMd').className = 'toggle-btn' + (val ? ' active' : ''); document.getElementById('togglePlain').className = 'toggle-btn' + (!val ? ' active' : ''); }
-function previewMarkdown() {
-  const content = document.getElementById('blogContent').value;
-  const preview = document.getElementById('blogPreview');
-  if (useMarkdown && typeof marked !== 'undefined') { preview.innerHTML = marked.parse(content, { breaks: true }); preview.style.display = 'block'; }
-  else { preview.innerHTML = '<pre style="white-space:pre-wrap">' + escapeHtml(content) + '</pre>'; preview.style.display = 'block'; }
-}
 function openBlogDialog(data) {
   document.getElementById('blogId').value = data ? data.id : '';
   document.getElementById('blogTitle').value = data ? data.title : '';
   document.getElementById('blogExcerpt').value = data ? (data.excerpt || '') : '';
   document.getElementById('blogContent').value = data ? data.content : '';
   document.getElementById('blogPublished').checked = data ? !!data.published : true;
-  setMarkdown(data ? (data.use_markdown !== 0 ? 1 : 0) : 1);
   document.getElementById('blogPreview').style.display = 'none';
   document.getElementById('blogDialogTitle').textContent = data ? '编辑文章' : '写文章';
   openDialog('blogDialog');
@@ -471,7 +462,7 @@ function openBlogDialog(data) {
 async function saveBlogPost() {
   const id = document.getElementById('blogId').value;
   const data = { title: document.getElementById('blogTitle').value.trim(), content: document.getElementById('blogContent').value.trim(),
-    excerpt: document.getElementById('blogExcerpt').value.trim(), published: document.getElementById('blogPublished').checked, use_markdown: useMarkdown };
+    excerpt: document.getElementById('blogExcerpt').value.trim(), published: document.getElementById('blogPublished').checked, use_markdown: 1 };
   if (!data.title || !data.content) { showSnackbar('标题和内容不能为空'); return; }
   try {
     if (id) await API.updateBlogPost(id, data); else await API.createBlogPost(data);
@@ -546,6 +537,50 @@ async function confirmRoleChange() {
   } catch (e) { showSnackbar(e.message); }
 }
 
+// === Attachments ===
+async function loadAttachments() {
+  const tbody = document.getElementById('attachmentsBody');
+  try {
+    const list = await API.request('GET', '/upload/list');
+    if (list.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">暂无附件</td></tr>'; return; }
+    tbody.innerHTML = list.map(f => `
+      <tr>
+        <td>${f.id}</td>
+        <td class="truncate" style="max-width:150px"><a href="/uploads/${f.filename}" target="_blank" style="color:var(--md-ref-primary)">${escapeHtml(f.filename)}</a></td>
+        <td class="truncate" style="max-width:150px" title="${escapeHtml(f.original_name)}">${escapeHtml(f.original_name)}</td>
+        <td>${(f.size / 1024).toFixed(0)} KB</td>
+        <td class="text-muted" style="font-size:13px">${f.mime_type || '-'}</td>
+        <td class="text-muted">UID ${f.user_id}</td>
+        <td class="text-muted" style="font-size:13px">${f.created_at}</td>
+        <td><button class="btn btn-text btn-sm" style="color:var(--md-ref-error)" onclick="confirmDelete('attachment',${f.id},'${escapeHtml(f.filename)}')">删除</button></td>
+      </tr>`).join('');
+  } catch (e) { tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">加载失败</td></tr>'; }
+}
+
+// === Image/File Upload ===
+async function uploadBlogFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.onchange = async () => {
+    if (!input.files[0]) return;
+    const formData = new FormData();
+    formData.append('file', input.files[0]);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/upload/file', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '上传失败');
+      const ta = document.getElementById('blogContent');
+      ta.value = ta.value + '\n' + data.tag + '\n';
+      ta.focus();
+      document.getElementById('blogUploadStatus').textContent = '已插入: ' + data.tag;
+    } catch (e) { showSnackbar(e.message); }
+  };
+  input.click();
+}
+
 // === Confirm Delete ===
 let pendingDelete = null;
 function confirmDelete(type, id, label) {
@@ -563,6 +598,7 @@ async function executeDelete() {
     else if (type === 'forumpost') await API.deleteForumPost(id);
     else if (type === 'blog') await API.deleteBlogPost(id);
     else if (type === 'user') await API.deleteUser(id);
+    else if (type === 'attachment') await API.request('DELETE', '/upload/' + id);
     showSnackbar('删除成功'); closeDialog('confirmDialog'); pendingDelete = null;
     if (type === 'link') loadLinks();
     else if (type === 'forumcat' || type === 'forumpost') { loadForumCats(); loadForumPosts(); }
@@ -574,5 +610,9 @@ async function executeDelete() {
 // === Init ===
 document.addEventListener('DOMContentLoaded', async () => {
   const user = await checkAuth();
-  if (user) switchTab('panels');
+  if (user) {
+    // Auto-switch to tab from URL query
+    const tabMatch = location.search.match(/tab=(\w+)/);
+    switchTab(tabMatch ? tabMatch[1] : 'panels');
+  }
 });

@@ -15,6 +15,7 @@ const captchaRoutes = require('./routes/captcha');
 const uploadRoutes = require('./routes/upload');
 const setupRoutes = require('./routes/setup');
 const proxyRoutes = require('./routes/proxy');
+const { blogSSR, forumSSR, sitemapXml } = require('./ssr');
 
 const app = express();
 // Read port from .env.json config file, env var, or default
@@ -35,6 +36,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
     }
   }
 }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin-links', adminLinkRoutes);
@@ -59,6 +61,11 @@ app.use((err, req, res, next) => {
   console.error('Unhandled error:', err.message);
   res.status(500).json({ error: '服务器内部错误' });
 });
+
+// SEO: Server-side rendered pages for search engines
+app.get('/blog/:id', blogSSR);
+app.get('/forum/:id', forumSSR);
+app.get('/sitemap.xml', sitemapXml);
 
 // SPA fallback: serve index.html for all non-API, non-static routes
 app.get('*', (req, res) => {

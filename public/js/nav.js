@@ -44,7 +44,15 @@ const NAV = {
 
     let right = `<button class="btn-icon" onclick="toggleTheme()" title="切换主题"><span class="material-icons">dark_mode</span></button>`;
     if (user) {
-      right += `<a href="/profile.html" class="btn btn-tonal btn-sm" title="个人中心"><span class="material-icons">person</span> ${escapeHtml(user.username)}</a>`;
+      // Fetch avatar from service (handles QQ auto + uploaded)
+      let avatarUrl = user.avatar || '';
+      if (!avatarUrl && user.email && user.email.match(/^(\d+)@qq\.com$/i)) {
+        avatarUrl = 'https://q1.qlogo.cn/g?b=qq&nk=' + RegExp.$1 + '&s=100';
+      }
+      const avatarHtml = avatarUrl
+        ? `<img src="${avatarUrl}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;margin-right:4px">`
+        : `<span class="material-icons" style="font-size:18px;margin-right:2px">person</span>`;
+      right += `<a href="/profile.html" class="btn btn-tonal btn-sm" title="个人中心">${avatarHtml} ${escapeHtml(user.username)}</a>`;
     } else {
       right += `<a href="/login.html" class="btn btn-tonal btn-sm">登录</a><a href="/register.html" class="btn btn-filled btn-sm">注册</a>`;
     }

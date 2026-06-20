@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>写文章 - RainWeb</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .write-page { max-width: 800px; margin: 0 auto; padding: 24px 16px; }
+    .write-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .write-header h1 { font-size: 24px; font-weight: 500; flex: 1; margin: 0; }
+  </style>
+</head>
+<body>
+  <nav class="nav-bar" id="mainNav"></nav>
+  <main class="write-page">
+    <div class="write-header">
+      <h1>写文章</h1>
+      <a href="/admin.html" class="btn btn-text btn-sm"><span class="material-icons">arrow_back</span> 返回管理</a>
+    </div>
+    <div class="card" style="padding:24px">
+      <div class="form-group"><label>标题 *</label><input type="text" id="wTitle" placeholder="文章标题"></div>
+      <div class="form-group"><label>摘要</label><input type="text" id="wExcerpt" placeholder="简短摘要"></div>
+      <div class="form-group"><label>内容 *</label><textarea id="wContent" style="min-height:350px;font-family:monospace;font-size:14px" placeholder="支持 Markdown 语法，拖入图片自动上传"></textarea></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <button class="btn btn-tonal btn-sm" onclick="uploadWFile()"><span class="material-icons">upload</span> 上传附件/图片</button>
+        <button class="btn btn-text btn-sm" onclick="previewW()"><span class="material-icons">visibility</span> 预览</button>
+        <label style="display:flex;align-items:center;gap:6px;margin-left:auto;font-size:14px;font-weight:500;color:var(--md-ref-on-surface-variant)">
+          <input type="checkbox" id="wPublished" checked> 发布
+        </label>
+      </div>
+      <div id="wUploadStatus" class="text-muted" style="font-size:13px;margin-bottom:12px"></div>
+      <div id="wPreview" class="md-body" style="display:none;padding:16px;background:var(--md-ref-surface-container-low);border-radius:12px;margin-bottom:16px;max-height:400px;overflow-y:auto"></div>
+      <button class="btn btn-filled" onclick="submitWPost()" id="wSubmitBtn">发布文章</button>
+    </div>
+  </main>
+  <div id="snackbar" class="snackbar"></div>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="/js/theme.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/render.js"></script>
+  <script>
+    let editingId = null;
+
+    // Check if editing existing post
+    const editMatch = location.search.match(/edit=(\d+)/);
+    if (editMatch) {
+      editingId = parseInt(editMatch[1]);
+      API.getBlogPosts(true).then(list => {
+        const p = list.find(x => x.id === editingId);
+        if (p) { document.getElementById('wTitle').value = p.title; document.getElementById('wExcerpt').value = p.excerpt || ''; document.getElementById('wContent').value = p.content; document.getElementById('wPublished').checked = !!p.published; document.querySelector('h1').textContent = '编辑文章'; }
+      });
+    }
+
+    function previewW() {
+      document.getElementById('wPreview').innerHTML = renderContent(document.getElementById('wContent').value, 1);
+      document.getElementById('wPreview').style.display = 'block';
+    }
+    async function uploadWFile() {
+      const input = document.createElement('input'); input.type = 'file';
+      input.onchange = async () => {
+        if (!input.files[0]) return;
+        const formData = new FormData(); formData.append('file', input.files[0]);
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch('/api/upload/file', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || '上传失败');
+          const ta = document.getElementById('wContent');
+          ta.value = ta.value + '\n' + data.tag + '\n'; ta.focus();
+          document.getElementById('wUploadStatus').textContent = '已插入: ' + data.tag;
+        } catch (e) { showSnackbar(e.message); }
+      }; input.click();
+    }
+    async function submitWPost() {
+      const title = document.getElementById('wTitle').value.trim();
+      const content = document.getElementById('wContent').value.trim();
+      if (!title || !content) { showSnackbar('标题和内容不能为空'); return; }
+      try {
+        const data = { title, content, excerpt: document.getElementById('wExcerpt').value.trim(), published: document.getElementById('wPublished').checked, use_markdown: 1 };
+        if (editingId) { await API.updateBlogPost(editingId, data); showSnackbar('已更新'); }
+        else { await API.createBlogPost(data); showSnackbar('已发布'); }
+        setTimeout(() => window.location.href = '/admin.html?tab=blog', 800);
+      } catch (e) { showSnackbar(e.message); }
+    }
+  </script>
+</body>
+</html>

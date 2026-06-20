@@ -52,11 +52,20 @@
       const container = document.getElementById('profileContent');
       try {
         const user = await API.getMe();
+        // Fetch avatar URL (QQ auto or uploaded)
+        const av = await API.request('GET', '/upload/avatar-url?uid=' + user.id);
+        const avatarUrl = av.url || '';
+        const avatarHtml = avatarUrl
+          ? `<img src="${avatarUrl}" style="width:64px;height:64px;border-radius:50%;object-fit:cover">`
+          : `<div style="width:64px;height:64px;border-radius:50%;background:var(--md-ref-primary-container);color:var(--md-ref-on-primary-container);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:600">${escapeHtml(user.username.charAt(0).toUpperCase())}</div>`;
         container.innerHTML = `
           <div class="card" style="margin-bottom:16px">
             <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-              <div style="width:64px;height:64px;border-radius:50%;background:var(--md-ref-primary-container);color:var(--md-ref-on-primary-container);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:600">
-                ${escapeHtml(user.username.charAt(0).toUpperCase())}
+              <div style="position:relative">
+                ${avatarHtml}
+                <button class="btn-icon" style="position:absolute;bottom:-4px;right:-4px;width:28px;height:28px;background:var(--md-ref-surface-container);font-size:14px;box-shadow:0 2px 8px var(--md-shadow)" onclick="uploadAvatar()" title="更换头像">
+                  <span class="material-icons" style="font-size:16px">camera_alt</span>
+                </button>
               </div>
               <div>
                 <h3 style="font-size:20px;font-weight:600">${escapeHtml(user.username)}</h3>
@@ -77,7 +86,7 @@
             <button class="btn btn-text btn-sm" style="color:var(--md-ref-error);margin-left:8px" onclick="handleLogout()">退出登录</button>
           </div>
           <div class="card" style="text-align:center;padding:16px;color:var(--md-ref-on-surface-variant);font-size:13px">
-            注册时间: ${user.created_at}
+            UID: ${user.id} · 注册时间: ${user.created_at}
           </div>`;
       } catch (e) {
         container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>' + escapeHtml(e.message) + '</p></div>';
@@ -92,6 +101,45 @@
       document.getElementById('newPw').value = '';
       document.getElementById('confirmPw').value = '';
       openDialog('pwChangeDialog');
+    }
+
+    async function uploadAvatar() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async () => {
+        if (!input.files || !input.files[0]) return;
+        // Client-side resize to 512x512
+        const file = input.files[0];
+        const img = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = r.result; };
+          r.readAsDataURL(file);
+        });
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, 512, 512);
+        const s = Math.min(img.width, img.height);
+        const sx = (img.width - s) / 2, sy = (img.height - s) / 2;
+        ctx.drawImage(img, sx, sy, s, s, 0, 0, 512, 512);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+        const formData = new FormData();
+        formData.append('file', blob, 'avatar.jpg');
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch('/api/upload/avatar', {
+            method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData,
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || '上传失败');
+          showSnackbar('头像已更新');
+          loadProfile();
+        } catch (e) { showSnackbar(e.message); }
+      };
+      input.click();
     }
 
     async function sendPwCode() {
