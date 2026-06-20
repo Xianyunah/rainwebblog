@@ -4,10 +4,15 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 
 const DB_PATH = path.join(__dirname, 'data', 'rainweb.db');
+const DATA_DIR = path.dirname(DB_PATH);
 let db = null;
 
 async function getDb() {
   if (db) return db;
+  // Ensure data directory exists
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
   const SQL = await initSqlJs();
   if (fs.existsSync(DB_PATH)) {
     const buffer = fs.readFileSync(DB_PATH);

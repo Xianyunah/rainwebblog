@@ -15,6 +15,7 @@ const captchaRoutes = require('./routes/captcha');
 const uploadRoutes = require('./routes/upload');
 const setupRoutes = require('./routes/setup');
 const proxyRoutes = require('./routes/proxy');
+const importRoutes = require('./routes/import');
 const { blogSSR, forumSSR, sitemapXml } = require('./ssr');
 
 const app = express();
@@ -51,6 +52,7 @@ app.use('/api/captcha', captchaRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/setup', setupRoutes);
 app.use('/api/proxy', proxyRoutes);
+app.use('/api/import', importRoutes);
 
 // Version info
 const version = require('fs').readFileSync('./VERSION', 'utf8').trim();
@@ -88,6 +90,12 @@ process.on('uncaughtException', (err) => {
 
 async function start() {
   try {
+    // Ensure required directories exist
+    const fs = require('fs');
+    ['data', 'uploads', 'uploads/avatars'].forEach(d => {
+      const dir = path.join(__dirname, d);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    });
     await getDb();
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`RainWeb running on port ${PORT}`);

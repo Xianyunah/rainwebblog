@@ -132,6 +132,10 @@ function showNewPost() {
   document.getElementById('postTitle').value = '';
   document.getElementById('postContent').value = '';
   document.getElementById('forumUploadStatus').innerHTML = '';
+  // Render inline captcha if needed
+  CAPTCHA.checkRequired('forum').then(r => {
+    if (r.required) CAPTCHA.renderInline('forumCaptcha');
+  });
   openDialog('newPostDialog');
 }
 
@@ -146,8 +150,19 @@ async function submitPost() {
   };
   if (!data.title || !data.content) { showSnackbar('标题和内容不能为空'); return; }
 
-  const captchaOk = await CAPTCHA.verify('forum');
-  if (!captchaOk) return;
+  // Check inline captcha if needed
+  const capContainer = document.getElementById('forumCaptcha');
+  if (capContainer && capContainer.style.display !== 'none') {
+    const val = CAPTCHA.getInlineValue();
+    if (CAPTCHA.type === 'builtin') {
+      const t = CAPTCHA.getToken();
+      if (!val || !t) { showSnackbar('请完成验证码'); return; }
+      const verify = await CAPTCHA.verify(val);
+      if (!verify.success) { showSnackbar(verify.error || '验证码错误'); CAPTCHA.resetInline(); return; }
+    } else if (CAPTCHA.type === 'recaptcha' && !val) {
+      showSnackbar('请完成 reCAPTCHA 验证'); return;
+    }
+  }
 
   try {
     await API.createForumPost(data);

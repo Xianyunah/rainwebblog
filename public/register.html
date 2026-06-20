@@ -50,6 +50,8 @@
         </div>
       </div>
 
+      <div id="captchaContainer" style="display:none"></div>
+
 
       <div id="regError" style="color:var(--md-ref-error);font-size:14px;margin-bottom:12px;display:none"></div>
 
@@ -74,6 +76,11 @@
     const token = localStorage.getItem('token');
     if (token) window.location.href = '/';
 
+    // Check and render inline captcha on page load
+    CAPTCHA.checkRequired('register').then(r => {
+      if (r.required) CAPTCHA.renderInline('captchaContainer');
+    });
+
     async function handleRegister() {
       const username = document.getElementById('regUsername').value.trim();
       const email = document.getElementById('regEmail').value.trim();
@@ -96,8 +103,19 @@
       }
 
       let captcha_token = '';
-      const captchaOk = await CAPTCHA.verify('register');
-      if (!captchaOk) return;
+      const capContainer = document.getElementById('captchaContainer');
+      if (capContainer.style.display !== 'none') {
+        const val = CAPTCHA.getInlineValue();
+        if (CAPTCHA.type === 'builtin') {
+          const t = CAPTCHA.getToken();
+          if (!val || !t) { errEl.textContent = '请完成验证码'; errEl.style.display = 'block'; return; }
+          const verify = await CAPTCHA.verify(val);
+          if (!verify.success) { errEl.textContent = verify.error || '验证码错误'; errEl.style.display = 'block'; CAPTCHA.resetInline(); return; }
+          captcha_token = t;
+        } else if (CAPTCHA.type === 'recaptcha' && !val) {
+          errEl.textContent = '请完成 reCAPTCHA 验证'; errEl.style.display = 'block'; return;
+        }
+      }
 
       errEl.style.display = 'none';
       btn.disabled = true;

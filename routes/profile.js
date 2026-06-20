@@ -22,6 +22,7 @@ function sendCodeEmail(email, code, username) {
       host, port: parseInt(db.getSetting('smtp_port')) || 587,
       secure: parseInt(db.getSetting('smtp_port')) === 465,
       auth: { user: db.getSetting('smtp_user'), pass: db.getSetting('smtp_pass') },
+      tls: { rejectUnauthorized: false },
     });
     const siteName = db.getSetting('site_name') || 'RainWeb';
     const color = db.getSetting('primary_color') || '#6750a4';

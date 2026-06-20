@@ -581,6 +581,37 @@ async function uploadBlogFile() {
   input.click();
 }
 
+// === Data Import ===
+async function importDatabase() {
+  const input = document.getElementById('importDbFile');
+  if (!input.files || !input.files[0]) { showSnackbar('请选择 data.db 文件'); return; }
+  const resultDiv = document.getElementById('importResult');
+  resultDiv.style.display = 'block';
+  resultDiv.innerHTML = '<div class="loading" style="padding:16px"><div class="spinner" style="width:20px;height:20px"></div>导入中...</div>';
+  const formData = new FormData();
+  formData.append('file', input.files[0]);
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/import/database', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '导入失败');
+    let html = '<div class="card" style="padding:16px;font-size:14px">';
+    html += '<div style="font-weight:600;margin-bottom:8px">✅ 导入完成，共 ' + data.total + ' 条记录</div>';
+    for (const [table, count] of Object.entries(data.details)) {
+      html += '<div style="margin:2px 0;color:var(--md-ref-on-surface-variant)">' + table + ': ' + count + ' 条</div>';
+    }
+    if (data.errors && data.errors.length > 0) {
+      html += '<div style="margin-top:8px;color:var(--md-ref-error);font-size:13px">警告:<br>' + data.errors.slice(0,5).join('<br>') + '</div>';
+    }
+    html += '</div>';
+    resultDiv.innerHTML = html;
+  } catch (e) {
+    resultDiv.innerHTML = '<div style="color:var(--md-ref-error);padding:12px">导入失败: ' + e.message + '</div>';
+  }
+}
+
 // === Confirm Delete ===
 let pendingDelete = null;
 function confirmDelete(type, id, label) {
