@@ -9,24 +9,30 @@ router.get('/categories', (req, res) => {
 });
 
 router.post('/categories', authMiddleware, (req, res) => {
-  const { name, description, sort_order, announcement, sub_categories } = req.body;
-  if (!name) return res.status(400).json({ error: '名称不能为空' });
-  const existing = db.get('SELECT id FROM forum_categories WHERE name = ?', [name]);
-  if (existing) return res.status(400).json({ error: '分类已存在' });
-  const sc = Array.isArray(sub_categories) ? sub_categories.join(',') : (sub_categories || '');
-  const id = db.run('INSERT INTO forum_categories (name, description, sort_order, announcement, sub_categories) VALUES (?, ?, ?, ?, ?)',
-    [name, description || '', sort_order || 0, announcement || '', sc]);
-  res.json(db.get('SELECT * FROM forum_categories WHERE id = ?', [id]));
+  try {
+    const { name, description, sort_order, announcement, sub_categories } = req.body;
+    if (!name) return res.status(400).json({ error: '名称不能为空' });
+    const existing = db.get('SELECT id FROM forum_categories WHERE name = ?', [name]);
+    if (existing) return res.status(400).json({ error: '分类已存在' });
+    const sc = Array.isArray(sub_categories) ? sub_categories.join(',') : (sub_categories || '');
+    const id = db.run('INSERT INTO forum_categories (name, description, sort_order, announcement, sub_categories) VALUES (?, ?, ?, ?, ?)',
+      [name, description || '', sort_order || 0, announcement || '', sc]);
+    res.json(db.get('SELECT * FROM forum_categories WHERE id = ?', [id]));
+  } catch (e) { console.error('Create category error:', e.message); res.status(500).json({ error: e.message }); }
 });
 
 router.put('/categories/:id', authMiddleware, (req, res) => {
-  const { name, description, sort_order, announcement, sub_categories } = req.body;
-  const existing = db.get('SELECT id FROM forum_categories WHERE id = ?', [req.params.id]);
-  if (!existing) return res.status(404).json({ error: '分类不存在' });
-  const sc = Array.isArray(sub_categories) ? sub_categories.join(',') : (sub_categories || '');
-  db.run('UPDATE forum_categories SET name=?, description=?, sort_order=?, announcement=?, sub_categories=? WHERE id=?',
-    [name || '', description || '', sort_order || 0, announcement || '', sc, req.params.id]);
-  res.json(db.get('SELECT * FROM forum_categories WHERE id = ?', [req.params.id]));
+  try {
+    const { name, description, sort_order, announcement, sub_categories } = req.body;
+    const existing = db.get('SELECT id FROM forum_categories WHERE id = ?', [req.params.id]);
+    if (!existing) return res.status(404).json({ error: '分类不存在' });
+    const sc = Array.isArray(sub_categories) ? sub_categories.join(',') : (sub_categories || '');
+    db.run('UPDATE forum_categories SET name=?, description=?, sort_order=?, announcement=?, sub_categories=? WHERE id=?',
+      [name || '', description || '', sort_order || 0, announcement || '', sc, req.params.id]);
+    const updated = db.get('SELECT * FROM forum_categories WHERE id = ?', [req.params.id]);
+    if (!updated) return res.status(500).json({ error: '更新后读取失败' });
+    res.json(updated);
+  } catch (e) { console.error('Update category error:', e.message); res.status(500).json({ error: e.message }); }
 });
 
 router.delete('/categories/:id', authMiddleware, (req, res) => {

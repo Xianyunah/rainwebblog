@@ -121,11 +121,13 @@ router.post('/required', (req, res) => {
     const { action } = req.body;
     const captchaType = db.getSetting('captcha_type') || 'none';
     const hasRecaptcha = !!db.getSetting('recaptcha_site_key');
-    if (captchaType === 'none') return res.json({ required: false, type: 'none', has_recaptcha: false });
+    const hasTurnstile = !!db.getSetting('turnstile_site_key');
+    if (captchaType === 'none') return res.json({ required: false, type: 'none' });
     const val = db.getSetting('captcha_' + action);
     const isRequired = val === '1';
-    if (captchaType === 'recaptcha' && !hasRecaptcha) return res.json({ required: false, type: 'recaptcha', has_recaptcha: false });
-    res.json({ required: isRequired, type: captchaType, has_recaptcha: hasRecaptcha });
+    if (captchaType === 'recaptcha' && !hasRecaptcha) return res.json({ required: false, type: 'recaptcha' });
+    if (captchaType === 'turnstile' && !hasTurnstile) return res.json({ required: false, type: 'turnstile' });
+    res.json({ required: isRequired, type: captchaType });
   } catch (e) {
     console.error('Captcha required error:', e.message);
     res.status(500).json({ error: e.message });

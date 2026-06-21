@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>板块管理 - RainWeb</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .manage-tabs { display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid var(--md-ref-outline-variant) }
+    .manage-tab { padding:10px 24px;cursor:pointer;font-size:14px;font-weight:500;color:var(--md-ref-on-surface-variant);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s;display:flex;align-items:center;gap:6px }
+    .manage-tab:hover { color:var(--md-ref-primary) }
+    .manage-tab.active { color:var(--md-ref-primary);border-bottom-color:var(--md-ref-primary) }
+    .tab-content { display:none }
+    .tab-content.active { display:block }
+  </style>
+</head>
+<body>
+  <nav class="nav-bar" id="mainNav"></nav>
+  <main class="page" style="max-width:800px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <a href="/admin.html?tab=forum" class="btn-icon"><span class="material-icons">arrow_back</span></a>
+      <h1 class="page-title" style="margin:0" id="boardTitle">板块管理</h1>
+    </div>
+    <div class="manage-tabs">
+      <div class="manage-tab active" onclick="switchManageTab('settings')"><span class="material-icons" style="font-size:18px">settings</span> 论坛设置</div>
+      <div class="manage-tab" onclick="switchManageTab('posts')"><span class="material-icons" style="font-size:18px">forum</span> 帖子管理</div>
+    </div>
+
+    <!-- Tab1: Settings -->
+    <div id="manageTabSettings" class="tab-content active">
+      <div class="card" style="padding:24px">
+        <div class="form-group"><label>板块名称 *</label><input type="text" id="mCatName"></div>
+        <div class="form-group"><label>描述</label><input type="text" id="mCatDesc"></div>
+        <div class="form-group"><label>板块公告</label><textarea id="mCatAnnounce" style="min-height:60px"></textarea></div>
+        <div class="form-group"><label>帖子分类（逗号分隔）</label><input type="text" id="mCatSubCats" placeholder="例: 求助,分享,讨论,建议"></div>
+        <div class="form-group"><label>排序</label><input type="number" id="mCatSort" value="0"></div>
+        <button class="btn btn-filled" onclick="saveBoardSettings()">保存设置</button>
+      </div>
+    </div>
+
+    <!-- Tab2: Posts -->
+    <div id="manageTabPosts" class="tab-content">
+      <div class="admin-header"><h2>帖子列表</h2>
+        <div style="display:flex;gap:8px">
+          <select id="postFilterSub" onchange="loadBoardPosts()" style="width:auto">
+            <option value="">全部分类</option>
+          </select>
+        </div>
+      </div>
+      <div id="boardPostsBody"></div>
+    </div>
+  </main>
+
+  <div id="snackbar" class="snackbar"></div>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="/js/theme.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script>
+    const boardId = parseInt(location.pathname.match(/\/forum\/manage\/(\d+)/)?.[1] || '0');
+    let boardData = null;
+
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    function switchManageTab(tab) {
+      document.querySelectorAll('.manage-tab').forEach(el => el.classList.toggle('active', el.textContent.includes(tab === 'settings' ? '论坛设置' : '帖子管理')));
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.getElementById('manageTab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+    }
+
+    async function loadBoard() {
+      if (!boardId) { document.getElementById('boardTitle').textContent = '无效的板块'; return; }
+      const cats = await API.getForumCategories();
+      boardData = cats.find(c => c.id === boardId);
+      if (!boardData) { document.getElementById('boardTitle').textContent = '板块不存在'; return; }
+      document.getElementById('boardTitle').textContent = '管理: ' + boardData.name;
+      document.getElementById('mCatName').value = boardData.name;
+      document.getElementById('mCatDesc').value = boardData.description || '';
+      document.getElementById('mCatAnnounce').value = boardData.announcement || '';
+      document.getElementById('mCatSubCats').value = boardData.sub_categories || '';
+      document.getElementById('mCatSort').value = boardData.sort_order || 0;
+      // Populate sub-category filter
+      const sc = boardData.sub_categories ? boardData.sub_categories.split(',').filter(Boolean).map(t => t.trim()) : [];
+      const filterSel = document.getElementById('postFilterSub');
+      filterSel.innerHTML = '<option value="">全部分类</option>' + sc.map(s => '<option value="' + escapeHtml(s) + '">' + escapeHtml(s) + '</option>').join('');
+      loadBoardPosts();
+    }
+
+    async function saveBoardSettings() {
+      const data = {
+        name: document.getElementById('mCatName').value.trim(),
+        description: document.getElementById('mCatDesc').value.trim(),
+        announcement: document.getElementById('mCatAnnounce').value.trim(),
+        sub_categories: document.getElementById('mCatSubCats').value.trim(),
+        sort_order: parseInt(document.getElementById('mCatSort').value) || 0
+      };
+      if (!data.name) { showSnackbar('名称不能为空'); return; }
+      try {
+        await API.updateForumCategory(boardId, data);
+        showSnackbar('保存成功');
+        loadBoard();
+      } catch (e) { showSnackbar(e.message); }
+    }
+
+    async function loadBoardPosts() {
+      const container = document.getElementById('boardPostsBody');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+      try {
+        const posts = await API.getForumPosts(boardId);
+        const filterSub = document.getElementById('postFilterSub').value;
+        const filtered = filterSub ? posts.filter(p => p.sub_category === filterSub) : posts;
+        if (filtered.length === 0) { container.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div><p>暂无帖子</p></div>'; return; }
+        container.innerHTML = '<div class="table-wrapper"><table><thead><tr><th>标题</th><th>分类</th><th>作者</th><th>回复</th><th>时间</th><th style="width:80px">操作</th></tr></thead><tbody>' +
+          filtered.map(p => `<tr><td><strong>${escapeHtml(p.title)}</strong></td><td>${p.sub_category ? `<span class="chip" style="cursor:default;font-size:12px">${escapeHtml(p.sub_category)}</span>` : '-'}</td><td>${escapeHtml(p.author_name||'')}</td><td>${p.reply_count||0}</td><td class="text-muted" style="font-size:13px">${p.created_at}</td><td><button class="btn btn-text btn-sm" style="color:var(--md-ref-error)" onclick="deleteBoardPost(${p.id})">删除</button></td></tr>`).join('') +
+          '</tbody></table></div>';
+      } catch { container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>加载失败</p></div>'; }
+    }
+
+    async function deleteBoardPost(id) {
+      if (!confirm('确定删除此帖子？')) return;
+      try { await API.deleteForumPost(id); showSnackbar('已删除'); loadBoardPosts(); } catch (e) { showSnackbar(e.message); }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) { window.location.href = '/login.html'; return; }
+      try { const me = await API.getMe(); if (me.role !== 'admin') { showSnackbar('需要管理员权限'); setTimeout(() => window.location.href = '/', 1000); return; } } catch { window.location.href = '/login.html'; return; }
+      loadBoard();
+    });
+  </script>
+</body>
+</html>

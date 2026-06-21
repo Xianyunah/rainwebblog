@@ -30,8 +30,13 @@ async function getDb() {
 
 function saveDb() {
   if (!db) return;
-  const data = db.export();
-  fs.writeFileSync(DB_PATH, Buffer.from(data));
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    const data = db.export();
+    fs.writeFileSync(DB_PATH, Buffer.from(data));
+  } catch (e) {
+    console.error('Save DB failed:', e.message);
+  }
 }
 
 function initTables() {
@@ -132,6 +137,12 @@ function initTables() {
   db.run('CREATE INDEX IF NOT EXISTS idx_forum_replies_post ON forum_replies(post_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_password_user ON password_entries(user_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_attachments_ref ON attachments(ref_type, ref_id)');
+
+  // Legacy migrations for old database compatibility
+  try { db.run("ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''"); } catch {}
+  try { db.run('ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0'); } catch {}
+  try { db.run("ALTER TABLE users ADD COLUMN avatar TEXT DEFAULT ''"); } catch {}
+  try { db.run('ALTER TABLE blog_posts ADD COLUMN use_markdown INTEGER DEFAULT 1'); } catch {}
 }
 
 function seedAdmin() {
@@ -146,9 +157,12 @@ function seedDefaults() {
   const defaults = {
     site_name: 'RainWeb',
     site_description: '个人云平台',
+    site_url: '',
     primary_color: '#6750a4',
     recaptcha_site_key: '',
     recaptcha_secret_key: '',
+    turnstile_site_key: '',
+    turnstile_secret_key: '',
     smtp_host: '',
     smtp_port: '587',
     smtp_user: '',
@@ -174,24 +188,39 @@ function seedDefaults() {
 }
 
 function run(sql, params = []) {
-  db.run(sql, params);
-  const r = db.exec("SELECT last_insert_rowid()");
-  const rowid = r && r[0] && r[0].values ? r[0].values[0][0] : 0;
-  saveDb();
-  return rowid;
+  try {
+    db.run(sql, params);
+    const r = db.exec("SELECT last_insert_rowid()");
+    const rowid = r && r[0] && r[0].values ? r[0].values[0][0] : 0;
+    saveDb();
+    return rowid;
+  } catch (e) {
+    console.error('SQL run error:', e.message, 'SQL:', sql.substring(0, 80));
+    return 0;
+  }
 }
 
 function get(sql, params = []) {
-  const stmt = db.prepare(sql); stmt.bind(params);
-  if (stmt.step()) { const row = stmt.getAsObject(); stmt.free(); return row; }
-  stmt.free(); return null;
+  try {
+    const stmt = db.prepare(sql); stmt.bind(params);
+    if (stmt.step()) { const row = stmt.getAsObject(); stmt.free(); return row; }
+    stmt.free(); return null;
+  } catch (e) {
+    console.error('SQL get error:', e.message, 'SQL:', sql.substring(0, 80));
+    return null;
+  }
 }
 
 function all(sql, params = []) {
-  const stmt = db.prepare(sql); stmt.bind(params);
-  const rows = [];
-  while (stmt.step()) rows.push(stmt.getAsObject());
-  stmt.free(); return rows;
+  try {
+    const stmt = db.prepare(sql); stmt.bind(params);
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.getAsObject());
+    stmt.free(); return rows;
+  } catch (e) {
+    console.error('SQL all error:', e.message, 'SQL:', sql.substring(0, 80));
+    return [];
+  }
 }
 
 function getSetting(key) {

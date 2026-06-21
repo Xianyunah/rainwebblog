@@ -4,12 +4,12 @@ const { authMiddleware, adminOnly } = require('../middleware/auth');
 
 const router = express.Router();
 
-const ALL_KEYS = ['site_name','site_description','primary_color','recaptcha_site_key',
+const ALL_KEYS = ['site_name','site_description','site_url','primary_color','recaptcha_site_key','turnstile_site_key',
   'smtp_host','smtp_port','smtp_user','smtp_from_email','smtp_from_name',
   'theme_wallpaper','theme_wallpaper_scale','nav_style','card_style','glass_blur','glass_opacity',
   'captcha_type','captcha_login','captcha_register','captcha_forum'];
 
-const ALLOWED_SET = [...ALL_KEYS, 'recaptcha_secret_key', 'smtp_pass'];
+const ALLOWED_SET = [...ALL_KEYS, 'recaptcha_secret_key', 'smtp_pass', 'turnstile_secret_key'];
 
 router.get('/', (req, res) => {
   const settings = {};

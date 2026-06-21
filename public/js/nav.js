@@ -20,6 +20,7 @@ const NAV = {
     try {
       this.siteSettings = await API.getSettings();
       window._recaptchaSiteKey = this.siteSettings.recaptcha_site_key || '';
+      window._turnstileSiteKey = this.siteSettings.turnstile_site_key || '';
     } catch {}
     try {
       const v = await API.request('GET', '/version');

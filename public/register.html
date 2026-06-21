@@ -73,12 +73,21 @@
   <script src="/js/api.js"></script>
   <script src="/js/captcha.js"></script>
   <script>
+    let captchaNeeded = false;
     const token = localStorage.getItem('token');
     if (token) window.location.href = '/';
 
-    let captchaNeeded = false;
-
-    // Check captcha on load
+    // First load settings, then check captcha
+    API.getSettings().then(s => {
+      window._recaptchaSiteKey = s.recaptcha_site_key || '';
+      window._turnstileSiteKey = s.turnstile_site_key || '';
+      CAPTCHA.checkRequired('register').then(r => {
+        if (r.required) {
+          captchaNeeded = true;
+          document.getElementById('capBtn').style.display = 'inline-flex';
+        }
+      });
+    });
     CAPTCHA.checkRequired('register').then(r => {
       if (r.required) {
         captchaNeeded = true;
@@ -148,7 +157,6 @@
         errEl.style.display = 'block';
         btn.disabled = false;
         btn.textContent = '注册';
-        if (recaptchaContainer.dataset.sitekey) grecaptcha.reset();
       }
     }
 

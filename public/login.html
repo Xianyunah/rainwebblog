@@ -48,13 +48,20 @@
     if (token) window.location.href = '/';
 
     let captchaNeeded = false;
+    let settingsLoaded = false;
 
-    // Check if captcha is needed on page load
-    CAPTCHA.checkRequired('login').then(r => {
-      if (r.required) {
-        captchaNeeded = true;
-        document.getElementById('capBtn').style.display = 'inline-flex';
-      }
+    // First load settings, then check captcha
+    API.getSettings().then(s => {
+      window._recaptchaSiteKey = s.recaptcha_site_key || '';
+      window._turnstileSiteKey = s.turnstile_site_key || '';
+      settingsLoaded = true;
+      // Now check captcha
+      CAPTCHA.checkRequired('login').then(r => {
+        if (r.required) {
+          captchaNeeded = true;
+          document.getElementById('capBtn').style.display = 'inline-flex';
+        }
+      });
     });
 
     function togglePw(btn) {

@@ -134,17 +134,6 @@ async function viewPost(postId) {
             ${subCat}
           </div>
         </div>
-          <h3 style="font-size:22px;font-weight:600">${escapeHtml(post.title)}</h3>
-          <div class="post-meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span>${escapeHtml(post.author_name || '匿名')}</span>
-            <span>${post.created_at}</span>
-            <span class="chip" style="cursor:default;background:var(--md-ref-secondary-container);color:var(--md-ref-on-secondary-container);font-size:12px;padding:2px 10px">${escapeHtml(post.category_name || '')}</span>
-            ${subCat}
-            <span style="flex:1"></span>
-            ${tags ? '<span>' + tags + '</span>' : ''}
-          </div>
-          ${tags ? '<div style="margin-top:8px">' + tags + '</div>' : ''}
-        </div>
         <div class="post-body">${renderContent(post.content, 1)}</div>
         <hr style="border:none;border-top:2px solid var(--md-ref-primary-container);margin:24px 0;border-radius:2px">
         <h4 style="font-weight:500;margin-bottom:16px">回复 (${replies.length})</h4>

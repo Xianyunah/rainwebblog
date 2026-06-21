@@ -225,12 +225,24 @@ button:active, .btn:active {
   background: var(--md-ref-primary-container);
 }
 
+/* Material Icons - ensure perfect centering */
+.material-icons {
+  vertical-align: middle;
+  line-height: 1;
+  font-size: 24px;
+  display: inline-block;
+}
+
 .btn-icon {
   width: 40px;
+  height: 40px;
   padding: 0;
   border-radius: 50%;
   background: transparent;
   color: var(--md-ref-on-surface-variant);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .btn-icon:hover {
   background: var(--md-ref-surface-variant);

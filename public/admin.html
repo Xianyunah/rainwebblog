@@ -41,6 +41,7 @@
       <h3>基本设置</h3>
       <div class="form-group"><label>网站名称</label><input type="text" id="setSiteName"></div>
       <div class="form-group"><label>网站描述</label><input type="text" id="setSiteDesc"></div>
+      <div class="form-group"><label>网站域名</label><input type="url" id="setSiteUrl" placeholder="https://你的域名.com"></div>
       <div class="form-group"><label>主题色</label><input type="color" id="setPrimaryColor" class="color-input"></div>
       <h3>验证码设置</h3>
       <div class="form-group">
@@ -49,6 +50,7 @@
           <option value="none">不使用验证码</option>
           <option value="builtin">使用普通验证码（内置扭曲文字）</option>
           <option value="recaptcha">使用 Google reCAPTCHA V2</option>
+          <option value="turnstile">使用 Cloudflare Turnstile</option>
         </select>
       </div>
       <div id="captchaScopeConfig" style="display:none">
@@ -69,6 +71,11 @@
         <h3>Google reCAPTCHA V2 配置</h3>
         <div class="form-group"><label>Site Key</label><input type="text" id="setRecaptchaSite" placeholder="6L..."></div>
         <div class="form-group"><label>Secret Key</label><input type="text" id="setRecaptchaSecret" placeholder="6L..."></div>
+      </div>
+      <div id="turnstileConfig" style="display:none">
+        <h3>Cloudflare Turnstile 配置</h3>
+        <div class="form-group"><label>Site Key</label><input type="text" id="setTurnstileSite" placeholder="0x4AAAA..."></div>
+        <div class="form-group"><label>Secret Key</label><input type="text" id="setTurnstileSecret" placeholder="0x4AAAA..."></div>
       </div>
       <button class="btn btn-filled" onclick="saveSettings()">保存设置</button>
 
@@ -148,9 +155,8 @@
 
     <!-- Forum Management -->
     <div id="tabForum" class="tab-content" style="display:none">
-      <div class="admin-header"><h2>论坛管理</h2><button class="btn btn-filled" onclick="openForumCatDialog()"><span class="material-icons">add</span> 添加分类</button></div>
-      <div class="table-wrapper" style="margin-bottom:24px"><table><thead><tr><th>板块</th><th>描述</th><th>公告</th><th>排序</th><th style="width:100px">操作</th></tr></thead><tbody id="forumCatsBody"></tbody></table></div>
-      <div class="table-wrapper"><table><thead><tr><th>帖子</th><th>分类</th><th>作者</th><th>回复</th><th>时间</th><th style="width:80px">操作</th></tr></thead><tbody id="forumPostsBody"></tbody></table></div>
+      <div class="admin-header"><h2>论坛管理</h2><button class="btn btn-filled" onclick="openForumCatDialog()"><span class="material-icons">add</span> 添加板块</button></div>
+      <div id="forumCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px"></div>
     </div>
 
     <!-- Blog Management -->
@@ -215,7 +221,7 @@
       <button class="btn btn-tonal btn-sm" onclick="uploadBlogFile()"><span class="material-icons">upload</span> 上传附件</button>
       <span id="blogUploadStatus" class="text-muted" style="font-size:13px"></span>
     </div>
-    <div style="margin-bottom:16px"><button class="btn btn-text btn-sm" onclick="previewMarkdown()">预览</button></div>
+    </div>
     <div id="blogPreview" class="md-body" style="display:none;padding:16px;background:var(--md-ref-surface-container-low);border-radius:12px;margin-bottom:16px"></div>
     <div class="form-group"><label><input type="checkbox" id="blogPublished" checked> 发布</label></div>
     <div class="actions"><button class="btn btn-text" onclick="closeDialog('blogDialog')">取消</button><button class="btn btn-filled" onclick="saveBlogPost()">保存</button></div></div></div>

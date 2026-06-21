@@ -26,7 +26,7 @@ function switchTab(tab) {
     ({ panels: '管理面板', links: '面板链接', settings: '站点设置', forum: '论坛管理', blog: '博客管理', users: '用户管理', email: '邮件配置' })[tab] || '管理面板';
   document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
   document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).style.display = 'block';
-  const actions = { panels: loadPanels, links: loadLinks, settings: loadSettings, theme: loadThemeSettings, attachments: loadAttachments, forum: () => { loadForumCats(); loadForumPosts(); }, blog: loadBlogPosts, users: loadUsers, email: loadEmailSettings };
+  const actions = { panels: loadPanels, links: loadLinks, settings: loadSettings, theme: loadThemeSettings, attachments: loadAttachments, forum: loadForumCards, blog: loadBlogPosts, users: loadUsers, email: loadEmailSettings };
   if (actions[tab]) actions[tab]();
 }
 
@@ -124,9 +124,12 @@ async function loadSettings() {
     const s = await API.getSettings();
     document.getElementById('setSiteName').value = s.site_name || '';
     document.getElementById('setSiteDesc').value = s.site_description || '';
+    document.getElementById('setSiteUrl').value = s.site_url || '';
     document.getElementById('setPrimaryColor').value = s.primary_color || '#6750a4';
     document.getElementById('setRecaptchaSite').value = s.recaptcha_site_key || '';
     document.getElementById('setRecaptchaSecret').value = '';
+    document.getElementById('setTurnstileSite').value = s.turnstile_site_key || '';
+    document.getElementById('setTurnstileSecret').value = '';
     // Captcha settings
     document.getElementById('captchaType').value = s.captcha_type || 'none';
     document.getElementById('capLogin').checked = s.captcha_login === '1';
@@ -140,9 +143,12 @@ async function saveSettings() {
     await API.saveSettings({
       site_name: document.getElementById('setSiteName').value.trim(),
       site_description: document.getElementById('setSiteDesc').value.trim(),
+      site_url: document.getElementById('setSiteUrl').value.trim(),
       primary_color: document.getElementById('setPrimaryColor').value,
       recaptcha_site_key: document.getElementById('setRecaptchaSite').value.trim(),
       recaptcha_secret_key: document.getElementById('setRecaptchaSecret').value.trim(),
+      turnstile_site_key: document.getElementById('setTurnstileSite').value.trim(),
+      turnstile_secret_key: document.getElementById('setTurnstileSecret').value.trim(),
       captcha_type: document.getElementById('captchaType').value,
       captcha_login: document.getElementById('capLogin').checked ? '1' : '0',
       captcha_register: document.getElementById('capRegister').checked ? '1' : '0',
@@ -341,6 +347,7 @@ function toggleCaptchaConfig() {
   const type = document.getElementById('captchaType').value;
   document.getElementById('captchaScopeConfig').style.display = type === 'none' ? 'none' : 'block';
   document.getElementById('recaptchaConfig').style.display = type === 'recaptcha' ? 'block' : 'none';
+  document.getElementById('turnstileConfig').style.display = type === 'turnstile' ? 'block' : 'none';
 }
 
 // === Email Settings ===
@@ -375,26 +382,37 @@ async function testSmtp() {
 }
 
 // === Forum ===
-async function loadForumCats() {
-  const tbody = document.getElementById('forumCatsBody');
+async function loadForumCards() {
+  const container = document.getElementById('forumCards');
+  container.innerHTML = '<div class="loading" style="grid-column:1/-1"><div class="spinner"></div></div>';
   try {
     const cats = await API.getForumCategories();
-    tbody.innerHTML = cats.length === 0 ? '<tr><td colspan="5" class="text-center text-muted">暂无板块</td></tr>' :
-      cats.map(c => `<tr><td><strong>${escapeHtml(c.name)}</strong></td><td class="text-muted">${escapeHtml(c.description||'')}</td><td class="text-muted" style="font-size:13px">${c.announcement ? escapeHtml(c.announcement.substring(0,30)) + (c.announcement.length>30?'...':'') : '-'}</td><td>${c.sort_order}</td>
-        <td><button class="btn btn-text btn-sm" onclick="editForumCat(${c.id})">编辑</button><button class="btn btn-text btn-sm" style="color:var(--md-ref-error)" onclick="confirmDelete('forumcat',${c.id},'${escapeHtml(c.name)}')">删除</button></td></tr>`).join('');
-  } catch (e) { tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">加载失败</td></tr>'; }
-}
-async function loadForumPosts() {
-  const tbody = document.getElementById('forumPostsBody');
-  try {
     const posts = await API.getForumPosts();
-    const cats = await API.getForumCategories();
-    const catMap = {}; cats.forEach(c => catMap[c.id] = c.name);
-    tbody.innerHTML = posts.length === 0 ? '<tr><td colspan="6" class="text-center text-muted">暂无帖子</td></tr>' :
-      posts.map(p => `<tr><td><strong>${escapeHtml(p.title)}</strong></td><td><span class="chip" style="cursor:default;font-size:12px">${escapeHtml(catMap[p.category_id]||'')}</span></td>
-        <td>${escapeHtml(p.author_name||'')}</td><td>${p.reply_count||0}</td><td class="text-muted" style="font-size:13px">${p.created_at}</td>
-        <td><button class="btn btn-text btn-sm" style="color:var(--md-ref-error)" onclick="confirmDelete('forumpost',${p.id},'${escapeHtml(p.title)}')">删除</button></td></tr>`).join('');
-  } catch (e) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">加载失败</td></tr>'; }
+    const replyCounts = {};
+    posts.forEach(p => { replyCounts[p.category_id] = (replyCounts[p.category_id] || 0) + (p.reply_count || 0); });
+
+    if (cats.length === 0) {
+      container.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📋</div><p>暂无板块，点击"添加板块"创建</p></div>';
+      return;
+    }
+    container.innerHTML = cats.map(c => {
+      const postCount = posts.filter(p => p.category_id === c.id).length;
+      return `<div class="card" style="padding:20px;display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:16px;font-weight:600">${escapeHtml(c.name)}</span>
+          <span class="chip" style="cursor:default;font-size:11px;padding:1px 8px">排序 ${c.sort_order}</span>
+        </div>
+        <p class="text-muted" style="font-size:13px;margin-bottom:8px;flex:1">${escapeHtml(c.description || '无描述')}</p>
+        ${c.announcement ? `<div class="text-muted" style="font-size:12px;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(c.announcement)}">📢 ${escapeHtml(c.announcement)}</div>` : ''}
+        <div class="text-muted" style="font-size:12px;margin-bottom:12px">${postCount} 个帖子</div>
+        <div style="display:flex;gap:8px;margin-top:auto">
+          <a href="/forum/manage/${c.id}" class="btn btn-filled btn-sm" style="flex:1"><span class="material-icons" style="font-size:16px">settings</span> 进入管理</a>
+          <button class="btn btn-text btn-sm" onclick="editForumCat(${c.id})"><span class="material-icons" style="font-size:16px">edit</span></button>
+          <button class="btn btn-text btn-sm" style="color:var(--md-ref-error)" onclick="confirmDelete('forumcat',${c.id},'${escapeHtml(c.name)}')"><span class="material-icons" style="font-size:16px">delete</span></button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) { container.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">⚠️</div><p>加载失败</p></div>'; }
 }
 function openForumCatDialog(data) {
   document.getElementById('forumCatId').value = data ? data.id : '';
@@ -416,17 +434,9 @@ async function saveForumCat() {
     sort_order: parseInt(document.getElementById('forumCatSort').value) || 0
   };
   if (!data.name) { showSnackbar('名称不能为空'); return; }
-  try { if (id) await API.updateForumCategory(id, data); else await API.createForumCategory(data); showSnackbar('保存成功'); closeDialog('forumCatDialog'); loadForumCats(); } catch (e) { showSnackbar(e.message); }
+  try { if (id) await API.updateForumCategory(id, data); else await API.createForumCategory(data); showSnackbar('保存成功'); closeDialog('forumCatDialog'); loadForumCards(); } catch (e) { showSnackbar(e.message); }
 }
-async function saveForumCat() {
-  const id = document.getElementById('forumCatId').value;
-  const data = { name: document.getElementById('forumCatName').value.trim(), description: document.getElementById('forumCatDesc').value.trim(), sort_order: parseInt(document.getElementById('forumCatSort').value) || 0 };
-  if (!data.name) { showSnackbar('名称不能为空'); return; }
-  try {
-    if (id) await API.updateForumCategory(id, data); else await API.createForumCategory(data);
-    showSnackbar('保存成功'); closeDialog('forumCatDialog'); loadForumCats();
-  } catch (e) { showSnackbar(e.message); }
-}
+
 function editForumCat(id) { API.getForumCategories().then(cats => { const c = cats.find(x => x.id === id); if (c) openForumCatDialog(c); }); }
 
 // === Blog ===
@@ -666,7 +676,7 @@ async function executeDelete() {
     else if (type === 'attachment') await API.request('DELETE', '/upload/' + id);
     showSnackbar('删除成功'); closeDialog('confirmDialog'); pendingDelete = null;
     if (type === 'link') loadLinks();
-    else if (type === 'forumcat' || type === 'forumpost') { loadForumCats(); loadForumPosts(); }
+    else if (type === 'forumcat' || type === 'forumpost') { loadForumCards(); }
     else if (type === 'blog') loadBlogPosts();
     else if (type === 'user') loadUsers();
   } catch (e) { showSnackbar(e.message); }

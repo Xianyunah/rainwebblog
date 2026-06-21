@@ -140,7 +140,20 @@ app.use((err, req, res, next) => {
 // SEO: Server-side rendered pages for search engines
 app.get('/blog/:id', blogSSR);
 app.get('/forum/:id', forumSSR);
+app.get('/forum/manage/:id', (req, res) => {
+  if (req.path.startsWith('/forum/manage/')) return res.sendFile(path.join(__dirname, 'public', 'forum-manage.html'));
+  forumSSR(req, res);
+});
 app.get('/sitemap.xml', sitemapXml);
+app.get('/robots.txt', (req, res) => {
+  const db = require('./db');
+  const siteUrl = db.getSetting('site_url') || (req.protocol + '://' + req.get('host'));
+  const domain = siteUrl.replace(/\/$/, '');
+  res.type('text/plain');
+  res.send(`User-agent: *
+Allow: /
+Sitemap: ${domain}/sitemap.xml`);
+});
 
 // SPA fallback: serve index.html for all non-API, non-static routes
 app.get('*', (req, res) => {
@@ -163,12 +176,22 @@ process.on('uncaughtException', (err) => {
 
 async function start() {
   try {
-    // Ensure required directories exist
     const fs = require('fs');
     ['data', 'uploads', 'uploads/avatars'].forEach(d => {
       const dir = path.join(__dirname, d);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     });
+
+    // Auto-migrate old data.db to new location
+    const oldDb = path.join(__dirname, 'data.db');
+    const newDb = path.join(__dirname, 'data', 'rainweb.db');
+    if (fs.existsSync(oldDb) && !fs.existsSync(newDb)) {
+      console.log('Migrating old data.db to data/rainweb.db...');
+      fs.copyFileSync(oldDb, newDb);
+      fs.renameSync(oldDb, oldDb + '.bak');
+      console.log('Migration complete (old file renamed to data.db.bak)');
+    }
+
     await getDb();
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`RainWeb running on port ${PORT}`);
