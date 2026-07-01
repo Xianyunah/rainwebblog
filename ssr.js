@@ -1,8 +1,10 @@
 const db = require('./db');
+const marked = require('marked');
 
 function ssrPage(title, contentHtml, metaDesc, extra = {}) {
   const siteName = db.getSetting('site_name') || 'RainWeb';
   const siteDesc = db.getSetting('site_description') || '个人云管理平台';
+  const siteFavicon = db.getSetting('site_favicon') || '';
   const color = db.getSetting('primary_color') || '#6750a4';
   const baseUrl = extra.url || '';
   const ogTitle = title + ' - ' + siteName;
@@ -19,6 +21,7 @@ function ssrPage(title, contentHtml, metaDesc, extra = {}) {
   <meta name="description" content="${ogDesc}">
   <meta name="keywords" content="${siteName},${title},博客,论坛">
   <meta name="robots" content="index,follow">
+  <link rel="icon" href="${siteFavicon || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌧</text></svg>'}">
   ${canonical}
   <!-- Open Graph -->
   <meta property="og:title" content="${ogTitle}">
@@ -61,17 +64,35 @@ function ssrPage(title, contentHtml, metaDesc, extra = {}) {
 </html>`;
 }
 
-function renderSSR(content) {
-  let html = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  html = html.replace(/\[image:([^\]]+)\]/g, (m, f) => `<img src="/uploads/${encodeURIComponent(f)}" alt="" loading="lazy" style="max-width:100%;border-radius:8px;margin:8px 0">`);
-  html = html.replace(/\[file:([^\]]+)\]/g, (m, f) => `<a href="/uploads/${encodeURIComponent(f)}" target="_blank" style="color:#6750a4;text-decoration:underline">📎 ${f}</a>`);
-  return html.replace(/\n/g, '<br>');
+function renderSSR(content, useMarkdown) {
+  // Extract custom tags before markdown, restore after
+  const images = [];
+  const files = [];
+  let html = String(content).replace(/\[image:([^\]]+)\]/g, (m, f) => { images.push(f); return '\x00IMG' + (images.length - 1) + '\x00'; });
+  html = html.replace(/\[file:([^\]]+)\]/g, (m, f) => { files.push(f); return '\x00FILE' + (files.length - 1) + '\x00'; });
+
+  if (useMarkdown) {
+    html = marked.parse(html, { breaks: true, gfm: true });
+  } else {
+    html = html.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    html = html.replace(/\n/g, '<br>');
+  }
+
+  html = html.replace(/\x00IMG(\d+)\x00/g, (m, i) => {
+    const fn = images[parseInt(i)];
+    return fn ? `<img src="/uploads/${encodeURIComponent(fn)}" alt="" loading="lazy" style="max-width:100%;border-radius:8px;margin:8px 0">` : '';
+  });
+  html = html.replace(/\x00FILE(\d+)\x00/g, (m, i) => {
+    const fn = files[parseInt(i)];
+    return fn ? `<a href="/uploads/${encodeURIComponent(fn)}" target="_blank" style="color:#6750a4;text-decoration:underline">📎 ${fn}</a>` : '';
+  });
+  return html;
 }
 
 function blogSSR(req, res) {
   const post = db.get('SELECT bp.*, u.username as author_name FROM blog_posts bp LEFT JOIN users u ON bp.author_id = u.id WHERE bp.id = ?', [req.params.id]);
   if (!post || !post.published) return res.status(404).send('文章不存在');
-  const body = renderSSR(post.content);
+  const body = renderSSR(post.content, post.use_markdown);
   const excerpt = post.excerpt || post.content.slice(0, 150);
   const siteName = db.getSetting('site_name') || 'RainWeb';
   const siteUrl = db.getSetting('site_url') || (req.protocol + '://' + req.get('host'));
@@ -107,7 +128,7 @@ function forumSSR(req, res) {
      LEFT JOIN users u ON fr.author_id = u.id
      WHERE fr.post_id = ? ORDER BY fr.created_at ASC`, [req.params.id]);
 
-  const body = renderSSR(post.content);
+  const body = renderSSR(post.content, post.use_markdown);
   const siteName = db.getSetting('site_name') || 'RainWeb';
   const siteUrl = db.getSetting('site_url') || (req.protocol + '://' + req.get('host'));
   const baseDomain = siteUrl.replace(/\/$/, '');

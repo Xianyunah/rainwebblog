@@ -327,7 +327,7 @@ input, select, textarea {
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--md-ref-primary);
-  box-shadow: 0 0 0 3px rgba(103, 80, 164, 0.15);
+  box-shadow: 0 0 0 3px rgba(var(--md-ref-primary-rgb, 103, 80, 164), 0.15);
 }
 
 textarea {
@@ -1342,8 +1342,20 @@ table tr:hover td {
   border-radius: 12px;
   overflow-x: auto;
   margin: 16px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  tab-size: 2;
 }
-.md-body pre code { background: none; padding: 0; }
+.md-body pre code { background: none; padding: 0; font-size: inherit; }
+.md-body pre::-webkit-scrollbar { height: 4px; }
+.md-body pre::-webkit-scrollbar-thumb { background: var(--md-ref-outline-variant); border-radius: 2px; }
+.md-body table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+.md-body th, .md-body td { padding: 8px 12px; border: 1px solid var(--md-ref-outline-variant); text-align: left; }
+.md-body th { background: var(--md-ref-surface-container); font-weight: 600; }
+.md-body tr:nth-child(even) td { background: var(--md-ref-surface-container-low); }
+.md-body ul.task-list { list-style: none; padding-left: 0; }
+.md-body .task-list-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.md-body .task-list-item input[type="checkbox"] { pointer-events: none; }
 .md-body blockquote {
   border-left: 3px solid var(--md-ref-primary);
   padding: 8px 16px;
@@ -1355,9 +1367,6 @@ table tr:hover td {
 .md-body a { color: var(--md-ref-primary); }
 .md-body img { max-width: 100%; border-radius: 8px; margin: 12px 0; }
 .md-body hr { border: none; border-top: 1px solid var(--md-ref-outline-variant); margin: 24px 0; }
-.md-body table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-.md-body th, .md-body td { padding: 8px 12px; border: 1px solid var(--md-ref-outline-variant); text-align: left; }
-.md-body th { background: var(--md-ref-surface-container); font-weight: 600; }
 
 /* ===== Blog Detail ===== */
 .blog-article { max-width: 720px; margin: 0 auto; }
@@ -1402,6 +1411,10 @@ table tr:hover td {
 /* ===== Settings Page ===== */
 .settings-section { max-width: 600px; }
 .settings-section h3 { font-size: 18px; font-weight: 500; margin: 24px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--md-ref-outline-variant); }
+.settings-card { margin-bottom: 20px; }
+.settings-card h3 { font-size: 17px; font-weight: 600; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--md-ref-outline-variant); }
+.settings-card h4 { font-size: 14px; font-weight: 500; margin: 16px 0 8px; color: var(--md-ref-on-surface-variant); }
+.settings-card .btn-filled { margin-top: 4px; }
 .color-input { width: 48px; height: 48px; padding: 4px; border-radius: 12px; cursor: pointer; }
 
 /* ===== Markdown toggle ===== */
@@ -1604,6 +1617,57 @@ button.glass-card, .btn.glass-card, .nav-tab.glass-card, .chip.glass-card {
   color: var(--md-ref-on-surface-variant);
   line-height: 1.6;
   white-space: pre-wrap;
+}
+.homepage-contacts {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.hp-contact-link {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--md-ref-surface-container);
+  color: var(--md-ref-on-surface-variant);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.hp-contact-link {
+  position: relative;
+}
+.hp-contact-link:hover {
+  background: var(--md-ref-primary-container);
+  color: var(--md-ref-on-primary-container);
+  transform: translateY(-2px);
+}
+.hp-contact-link .material-icons {
+  font-size: 18px;
+}
+/* Tooltip */
+.hp-contact-link::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.8);
+  background: var(--md-ref-inverse-surface);
+  color: var(--md-ref-inverse-on-surface);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: all 0.2s;
+}
+.hp-contact-link:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
 }
 .homepage-content {
   flex: 1;

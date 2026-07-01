@@ -29,6 +29,29 @@ const PORT = process.env.PORT || configPort;
 
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
+
+// Serve index.html with dynamic settings injection (must be before static to take precedence)
+function serveIndex(req, res) {
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  const fs = require('fs');
+  if (fs.existsSync(indexPath)) {
+    let html = fs.readFileSync(indexPath, 'utf8');
+    try {
+      const { getSetting } = require('./db');
+      const siteName = getSetting('site_name') || 'Rainnya Blog';
+      const siteDesc = getSetting('site_description') || '个人云平台';
+      const siteFavicon = getSetting('site_favicon') || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌧</text></svg>';
+      html = html.replace(/\$\{site_name\}/g, siteName);
+      html = html.replace(/\$\{site_description\}/g, siteDesc);
+      html = html.replace(/\$\{site_favicon\}/g, siteFavicon);
+    } catch {}
+    res.send(html);
+  } else {
+    res.status(500).send('Index file not found. Please reinstall the application.');
+  }
+}
+app.get('/', serveIndex);
+
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: 0,
   setHeaders(res, path) {
@@ -169,12 +192,7 @@ Sitemap: ${domain}/sitemap.xml`);
 // SPA fallback: serve index.html for all non-API, non-static routes
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
-  const indexPath = path.join(__dirname, 'public', 'index.html');
-  if (require('fs').existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.status(500).send('Index file not found. Please reinstall the application.');
-  }
+  serveIndex(req, res);
 });
 
 // Prevent crash on unhandled promise rejections

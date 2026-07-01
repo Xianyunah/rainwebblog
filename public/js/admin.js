@@ -26,7 +26,7 @@ function switchTab(tab) {
     ({ panels: '管理面板', links: '面板链接', settings: '站点设置', forum: '论坛管理', blog: '博客管理', users: '用户管理', email: '邮件配置', homepage: '首页设置' })[tab] || '管理面板';
   document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
   document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).style.display = 'block';
-  const actions = { panels: loadPanels, links: loadLinks, settings: loadSettings, theme: loadThemeSettings, homepage: loadHomepage, attachments: loadAttachments, forum: loadForumCards, blog: loadBlogPosts, users: loadUsers, email: loadEmailSettings };
+  const actions = { panels: loadPanels, links: loadLinks, settings: loadSettings, theme: loadThemeSettings, homepage: loadHomepage, attachments: loadAttachments, forum: loadForumCards,   blog: () => { loadBlogPosts(); loadBlogSidebar(); }, users: loadUsers, email: loadEmailSettings };
   if (actions[tab]) actions[tab]();
 }
 
@@ -125,12 +125,11 @@ async function loadSettings() {
     document.getElementById('setSiteName').value = s.site_name || '';
     document.getElementById('setSiteDesc').value = s.site_description || '';
     document.getElementById('setSiteUrl').value = s.site_url || '';
-    document.getElementById('setPrimaryColor').value = s.primary_color || '#6750a4';
+    document.getElementById('setSiteFavicon').value = s.site_favicon || '';
     document.getElementById('setRecaptchaSite').value = s.recaptcha_site_key || '';
     document.getElementById('setRecaptchaSecret').value = '';
     document.getElementById('setTurnstileSite').value = s.turnstile_site_key || '';
     document.getElementById('setTurnstileSecret').value = '';
-    // Captcha settings
     document.getElementById('captchaType').value = s.captcha_type || 'none';
     document.getElementById('capLogin').checked = s.captcha_login === '1';
     document.getElementById('capRegister').checked = s.captcha_register === '1';
@@ -144,7 +143,7 @@ async function saveSettings() {
       site_name: document.getElementById('setSiteName').value.trim(),
       site_description: document.getElementById('setSiteDesc').value.trim(),
       site_url: document.getElementById('setSiteUrl').value.trim(),
-      primary_color: document.getElementById('setPrimaryColor').value,
+      site_favicon: document.getElementById('setSiteFavicon').value.trim(),
       recaptcha_site_key: document.getElementById('setRecaptchaSite').value.trim(),
       recaptcha_secret_key: document.getElementById('setRecaptchaSecret').value.trim(),
       turnstile_site_key: document.getElementById('setTurnstileSite').value.trim(),
@@ -384,22 +383,60 @@ async function testSmtp() {
 }
 
 // === Homepage ===
+function buildContactsEditor(links) {
+  const container = document.getElementById('contactsEditor');
+  container.innerHTML = '';
+  const list = links || [];
+  for (let i = 0; i < Math.max(list.length, 1); i++) {
+    addContactRow(list[i] || { icon: 'link', url: '', title: '' });
+  }
+}
+function addContactRow(data) {
+  const container = document.getElementById('contactsEditor');
+  const rows = container.querySelectorAll('.contact-row');
+  if (rows.length >= 5) return;
+  const row = document.createElement('div');
+  row.className = 'contact-row';
+  row.style.cssText = 'display:flex;gap:6px;align-items:center';
+  row.innerHTML = `
+    <input type="text" class="ci-icon" placeholder="图标名" value="${escapeHtml(data.icon || 'link')}" style="width:80px;flex-shrink:0;font-size:13px;padding:8px 10px" title="Material 图标名称，如 github, send, mail">
+    <input type="url" class="ci-url" placeholder="https://..." value="${escapeHtml(data.url || '')}" style="flex:1;font-size:13px;padding:8px 10px">
+    <input type="text" class="ci-title" placeholder="标题(选填)" value="${escapeHtml(data.title || '')}" style="width:100px;flex-shrink:0;font-size:13px;padding:8px 10px">
+    <button class="btn btn-text btn-sm" style="flex-shrink:0;min-width:32px;padding:0;color:var(--md-ref-error)" onclick="this.parentElement.remove()" title="删除">✕</button>
+  `;
+  container.appendChild(row);
+}
+function collectContacts() {
+  const rows = document.querySelectorAll('#contactsEditor .contact-row');
+  const links = [];
+  rows.forEach(row => {
+    const icon = row.querySelector('.ci-icon').value.trim();
+    const url = row.querySelector('.ci-url').value.trim();
+    const title = row.querySelector('.ci-title').value.trim();
+    if (url) links.push({ icon: icon || 'link', url, title });
+  });
+  return links;
+}
+
 async function loadHomepage() {
   try {
     const s = await API.getSettings();
     document.getElementById('hpAvatar').value = s.homepage_avatar || '';
     document.getElementById('hpBio').value = s.homepage_bio || '';
     document.getElementById('hpContent').value = s.homepage_content || '';
-    document.getElementById('setBlogSidebar').checked = s.blog_show_sidebar !== '0';
+    let contacts = [];
+    try { contacts = JSON.parse(s.homepage_contacts || '[]'); } catch {}
+    buildContactsEditor(contacts);
   } catch (e) { showSnackbar(e.message); }
 }
 async function saveHomepage() {
   try {
+    const contacts = collectContacts();
     await API.saveSettings({
       homepage_avatar: document.getElementById('hpAvatar').value.trim(),
       homepage_bio: document.getElementById('hpBio').value.trim(),
       homepage_content: document.getElementById('hpContent').value,
-      blog_show_sidebar: document.getElementById('setBlogSidebar').checked ? '1' : '0',
+      homepage_contacts: JSON.stringify(contacts),
     });
     showSnackbar('已保存');
   } catch (e) { showSnackbar(e.message); }
@@ -486,8 +523,19 @@ async function saveForumCat() {
 function editForumCat(id) { API.getForumCategories().then(cats => { const c = cats.find(x => x.id === id); if (c) openForumCatDialog(c); }); }
 
 // === Blog ===
+function loadBlogSidebar() {
+  const el = document.getElementById('setBlogSidebar');
+  if (!el) return;
+  API.getSettings().then(s => { el.checked = s.blog_show_sidebar !== '0'; }).catch(() => {});
+}
+function saveBlogSidebar() {
+  const el = document.getElementById('setBlogSidebar');
+  if (!el) return;
+  API.saveSettings({ blog_show_sidebar: el.checked ? '1' : '0' }).then(() => showSnackbar('已保存')).catch(e => showSnackbar(e.message));
+}
 async function loadBlogPosts() {
   const tbody = document.getElementById('blogBody');
+  loadBlogSidebar();
   try {
     const posts = await API.getBlogPosts(true);
     tbody.innerHTML = posts.length === 0 ? '<tr><td colspan="5" class="text-center text-muted">暂无文章</td></tr>' :

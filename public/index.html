@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>首页 - RainWeb</title>
-  <meta name="description" content="个人主页 - RainWeb">
+  <title>${site_name}</title>
+  <meta name="description" content="${site_description}">
   <meta property="og:type" content="website">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🌧</text></svg>">
+  <link rel="icon" href="${site_favicon}">
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
   <link rel="stylesheet" href="/css/style.css">
 </head>
@@ -21,6 +21,7 @@
             <span id="hpAvatarPlaceholder" class="material-icons" style="font-size:64px;color:var(--md-ref-on-surface-variant)">person</span>
           </div>
           <div id="hpBio" class="homepage-bio"></div>
+          <div id="hpContacts" class="homepage-contacts"></div>
         </div>
         <div class="card" id="hpRecentCard">
           <div class="homepage-recent-header">最新文章</div>
@@ -56,6 +57,20 @@
           document.getElementById('hpAvatarPlaceholder').style.display = 'none';
         }
         document.getElementById('hpBio').textContent = s.homepage_bio || '';
+        // Contact links
+        const contactsEl = document.getElementById('hpContacts');
+        if (s.homepage_contacts) {
+          try {
+            const links = JSON.parse(s.homepage_contacts);
+            if (links.length > 0) {
+              contactsEl.innerHTML = links.map(l =>
+                `<a href="${escapeHtml(l.url)}" target="_blank" rel="noopener" class="hp-contact-link" title="${escapeHtml(l.title || '')}">
+                  <span class="material-icons">${escapeHtml(l.icon || 'link')}</span>
+                </a>`
+              ).join('');
+            }
+          } catch {}
+        }
         const body = renderContent(s.homepage_content || '', true);
         document.getElementById('hpContent').innerHTML = body;
       } catch (e) {

@@ -58,6 +58,28 @@
       document.getElementById('wPreview').innerHTML = renderContent(document.getElementById('wContent').value, 1);
       document.getElementById('wPreview').style.display = 'block';
     }
+    // Drag-and-drop image upload
+    const wContent = document.getElementById('wContent');
+    wContent.addEventListener('dragover', e => { e.preventDefault(); wContent.style.borderColor = 'var(--md-ref-primary)'; });
+    wContent.addEventListener('dragleave', () => { wContent.style.borderColor = ''; });
+    wContent.addEventListener('drop', async e => {
+      e.preventDefault(); wContent.style.borderColor = '';
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+      if (files.length === 0) { showSnackbar('请拖入图片文件'); return; }
+      for (const file of files) {
+        const formData = new FormData(); formData.append('file', file);
+        try {
+          const token = localStorage.getItem('token');
+          const res = await fetch('/api/upload/file', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || '上传失败');
+          wContent.value = wContent.value + '\n' + data.tag + '\n';
+          document.getElementById('wUploadStatus').textContent = '已插入: ' + data.tag;
+        } catch (e) { showSnackbar(e.message); }
+      }
+      wContent.focus();
+    });
+
     async function uploadWFile() {
       const input = document.createElement('input'); input.type = 'file';
       input.onchange = async () => {

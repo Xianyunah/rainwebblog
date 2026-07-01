@@ -1,9 +1,3 @@
-function escapeHtml(t) {
-  const d = document.createElement('div');
-  d.textContent = t;
-  return d.innerHTML;
-}
-
 async function loadSidebar() {
   try {
     const s = await API.getPublicSettings();
@@ -60,7 +54,7 @@ async function viewPost(id) {
         </button>
         <h1 class="article-title">${escapeHtml(post.title)}</h1>
         <div class="article-meta">${escapeHtml(post.author_name || '管理员')} · ${post.created_at}</div>
-        <div class="article-body">${escapeHtml(post.content)}</div>
+        <div class="article-body">${renderContent(post.content, post.use_markdown)}</div>
       </div>`;
   } catch (e) {
     detail.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>加载失败</p></div>';

@@ -1,3 +1,106 @@
+// ── Global color helpers ──
+function hexToHsl(hex) {
+  let r = parseInt(hex.slice(1,3), 16) / 255;
+  let g = parseInt(hex.slice(3,5), 16) / 255;
+  let b = parseInt(hex.slice(5,7), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s2 = 0, l2 = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s2 = l2 > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return [h * 360, s2 * 100, l2 * 100];
+}
+function hslToHex(h2, s2, l2) {
+  h2 /= 360; s2 /= 100; l2 /= 100;
+  let r, g, b;
+  if (s2 === 0) { r = g = b = l2; }
+  else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q2 = l2 < 0.5 ? l2 * (1 + s2) : l2 + s2 - l2 * s2;
+    const p2 = 2 * l2 - q2;
+    r = hue2rgb(p2, q2, h2 + 1/3);
+    g = hue2rgb(p2, q2, h2);
+    b = hue2rgb(p2, q2, h2 - 1/3);
+  }
+  const toHex = (x) => Math.round(x * 255).toString(16).padStart(2, '0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+function isLight(hex) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return (r * 0.299 + g * 0.587 + b * 0.114) > 160;
+}
+function injectThemeStyle(settings) {
+  const color = settings.primary_color || '#6750a4';
+  const styleId = 'rainweb-theme';
+  const old = document.getElementById(styleId);
+  if (old) old.remove();
+
+  const [hue, sat] = hexToHsl(color);
+  const ps = (x) => Math.min(sat * x, 70);
+  const ss = (x) => Math.min(sat * x, 40);
+  const su = (x) => Math.min(sat * x, 45);
+  const light = isLight(color);
+
+  const sheet = document.createElement('style');
+  sheet.id = styleId;
+  sheet.textContent =
+':root{' +
+  '--md-source:' + color + ';' +
+  '--md-ref-primary:' + color + ';' +
+  '--md-ref-on-primary:' + (light ? '#1c1b1f' : '#ffffff') + ';' +
+  '--md-ref-primary-container:' + hslToHex(hue, ps(0.4), 90) + ';' +
+  '--md-ref-on-primary-container:' + hslToHex(hue, ps(0.6), 10) + ';' +
+  '--md-ref-secondary:' + hslToHex(hue, ss(0.2), 42) + ';' +
+  '--md-ref-on-secondary:#ffffff;' +
+  '--md-ref-secondary-container:' + hslToHex(hue, ss(0.15), 90) + ';' +
+  '--md-ref-on-secondary-container:' + hslToHex(hue, ss(0.3), 12) + ';' +
+  '--md-ref-surface-container:' + hslToHex(hue, su(0.3), 88) + ';' +
+  '--md-ref-surface-container-low:' + hslToHex(hue, su(0.2), 92) + ';' +
+  '--md-ref-surface-container-high:' + hslToHex(hue, su(0.4), 84) + ';' +
+  '--md-ref-surface-variant:' + hslToHex(hue, su(0.5), 82) + ';' +
+  '--md-ref-on-surface-variant:' + hslToHex(hue, ss(0.15), 28) + ';' +
+  '--md-ref-outline:' + hslToHex(hue, ss(0.2), 50) + ';' +
+  '--md-ref-outline-variant:' + hslToHex(hue, su(0.3), 74) + ';' +
+  '--md-card-bg:' + hslToHex(hue, su(0.15), 96) + ';' +
+  '--md-ref-primary-rgb:' + parseInt(color.slice(1,3),16) + ',' + parseInt(color.slice(3,5),16) + ',' + parseInt(color.slice(5,7),16) + ';' +
+'}' +
+'[data-theme="dark"]{' +
+  '--md-source:' + color + ';' +
+  '--md-ref-primary:' + hslToHex(hue, ps(0.6), 78) + ';' +
+  '--md-ref-on-primary:' + hslToHex(hue, ps(0.3), 12) + ';' +
+  '--md-ref-primary-container:' + hslToHex(hue, ps(0.35), 22) + ';' +
+  '--md-ref-on-primary-container:' + hslToHex(hue, ps(0.4), 88) + ';' +
+  '--md-ref-secondary:' + hslToHex(hue, ss(0.15), 74) + ';' +
+  '--md-ref-on-secondary:' + hslToHex(hue, ss(0.06), 12) + ';' +
+  '--md-ref-secondary-container:' + hslToHex(hue, ss(0.2), 22) + ';' +
+  '--md-ref-on-secondary-container:' + hslToHex(hue, ss(0.1), 86) + ';' +
+  '--md-ref-surface-container:' + hslToHex(hue, su(0.4), 10) + ';' +
+  '--md-ref-surface-container-low:' + hslToHex(hue, su(0.3), 8) + ';' +
+  '--md-ref-surface-container-high:' + hslToHex(hue, su(0.5), 13) + ';' +
+  '--md-ref-surface-variant:' + hslToHex(hue, su(0.6), 18) + ';' +
+  '--md-ref-on-surface-variant:' + hslToHex(hue, ss(0.1), 76) + ';' +
+  '--md-ref-outline:' + hslToHex(hue, ss(0.15), 52) + ';' +
+  '--md-ref-outline-variant:' + hslToHex(hue, su(0.5), 22) + ';' +
+  '--md-card-bg:' + hslToHex(hue, su(0.3), 10) + ';' +
+'}';
+  document.head.appendChild(sheet);
+}
+
 const NAV = {
   currentUser: null,
   siteSettings: {},
@@ -78,9 +181,8 @@ const NAV = {
       window._forceDark = false;
     }
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const color = s.primary_color || '#6750a4';
-    document.documentElement.style.setProperty('--md-source', color);
-    document.documentElement.style.setProperty('--md-ref-primary', color);
+
+    injectThemeStyle(s);
 
     const body = document.body;
     const wallpaper = s.theme_wallpaper || '';
@@ -117,10 +219,6 @@ const NAV = {
     document.querySelectorAll('.card, .blog-card, .panel-card, .link-card, .forum-post-card, .password-card, .forum-cat-item, .chip').forEach(el => {
       el.classList.toggle('glass-card', cs === 'glass');
     });
-
-    // Primary container color
-    const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
-    document.documentElement.style.setProperty('--md-ref-primary-container', `rgba(${r},${g},${b},0.15)`);
 
     // Brightness-based text readability for wallpaper backgrounds
     // When wallpaper is present, compute luminance and add overlay

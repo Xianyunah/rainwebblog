@@ -1,6 +1,6 @@
 {
   "name": "rainweb-links",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "链接聚合管理平台",
   "main": "server.js",
   "scripts": {
