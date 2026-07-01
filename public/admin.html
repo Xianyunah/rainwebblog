@@ -17,6 +17,7 @@
         <button class="btn btn-tonal btn-sm" onclick="switchTab('links')" id="tabLinksBtn">面板链接</button>
         <button class="btn btn-tonal btn-sm" onclick="switchTab('settings')" id="tabSettingsBtn">站点设置</button>
         <button class="btn btn-tonal btn-sm" onclick="switchTab('theme')" id="tabThemeBtn">主题</button>
+        <button class="btn btn-tonal btn-sm" onclick="switchTab('homepage')" id="tabHomepageBtn">首页</button>
         <button class="btn btn-tonal btn-sm" onclick="switchTab('attachments')" id="tabAttachmentsBtn">附件</button>
         <button class="btn btn-tonal btn-sm" onclick="switchTab('forum')" id="tabForumBtn">论坛</button>
         <button class="btn btn-tonal btn-sm" onclick="switchTab('blog')" id="tabBlogBtn">博客</button>
@@ -144,7 +145,30 @@
       <h3>玻璃效果微调</h3>
       <div class="form-group"><label>模糊强度 (px)</label><input type="range" id="setGlassBlur" min="5" max="40" value="20" oninput="document.getElementById('blurVal').textContent=this.value+'px'"><span id="blurVal" class="text-muted" style="font-size:14px">20px</span></div>
       <div class="form-group"><label>透明度</label><input type="range" id="setGlassOpacity" min="0.1" max="0.95" step="0.05" value="0.6" oninput="document.getElementById('opacityVal').textContent=this.value"><span id="opacityVal" class="text-muted" style="font-size:14px">0.6</span></div>
+      <div class="form-group" style="flex-direction:row;align-items:center;gap:12px">
+        <label style="margin:0;min-width:120px">强制深色模式</label>
+        <label style="font-weight:400;gap:6px;display:flex;align-items:center"><input type="checkbox" id="setForceDark"> 启用后用户无法切换为浅色</label>
+      </div>
       <button class="btn btn-filled" onclick="saveThemeSettings()">保存</button>
+    </div>
+
+    <!-- Homepage Settings -->
+    <div id="tabHomepage" class="tab-content settings-section" style="display:none">
+      <h3>主页设置</h3>
+      <div class="form-group"><label>头像 URL</label><input type="url" id="hpAvatar" placeholder="https://example.com/avatar.jpg"></div>
+      <div class="form-group"><label>个人简介</label><textarea id="hpBio" style="min-height:60px" placeholder="一段简短的自我介绍"></textarea></div>
+      <div class="form-group"><label>主页正文 (Markdown)</label>
+        <textarea id="hpContent" style="min-height:300px;font-family:monospace" placeholder="支持 Markdown 语法和 [image:filename] 标签"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-tonal btn-sm" onclick="uploadHomepageFile()"><span class="material-icons">upload</span> 上传附件</button>
+          <span id="hpUploadStatus" class="text-muted" style="font-size:13px"></span>
+        </div>
+      </div>
+      <div class="form-group" style="flex-direction:row;align-items:center;gap:12px">
+        <label style="margin:0;min-width:120px">博客显示侧栏</label>
+        <label style="font-weight:400;gap:6px;display:flex;align-items:center"><input type="checkbox" id="setBlogSidebar" checked> 博客页面左侧显示头像和简介</label>
+      </div>
+      <button class="btn btn-filled" onclick="saveHomepage()">保存</button>
     </div>
 
     <!-- Attachments Management -->

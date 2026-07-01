@@ -18,7 +18,7 @@ const NAV = {
       try { this.currentUser = await API.getMe(); } catch { localStorage.removeItem('token'); }
     }
     try {
-      this.siteSettings = await API.getSettings();
+      this.siteSettings = await API.getPublicSettings();
       window._recaptchaSiteKey = this.siteSettings.recaptcha_site_key || '';
       window._turnstileSiteKey = this.siteSettings.turnstile_site_key || '';
     } catch {}
@@ -38,7 +38,7 @@ const NAV = {
     const siteName = this.siteSettings.site_name || 'RainWeb';
     const path = location.pathname;
 
-    let tabs = `<a href="/" class="nav-tab ${path === '/' ? 'active' : ''}">博客</a>`;
+    let tabs = `<a href="/" class="nav-tab ${path === '/' ? 'active' : ''}">首页</a><a href="/blog.html" class="nav-tab ${path === '/blog.html' ? 'active' : ''}">博客</a>`;
     if (user) tabs += `<a href="/forum.html" class="nav-tab ${path === '/forum.html' ? 'active' : ''}">论坛</a>`;
     if (isAdmin) tabs += `<a href="/admin.html" class="nav-tab ${path === '/admin.html' ? 'active' : ''}">管理面板</a>`;
     if (isAdmin) tabs += `<a href="/passwords.html" class="nav-tab ${path === '/passwords.html' ? 'active' : ''}">密码箱</a>`;
@@ -69,6 +69,14 @@ const NAV = {
 
   applyTheme() {
     const s = this.siteSettings;
+    // Force dark mode
+    if (s.theme_force_dark === '1') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('theme', 'dark');
+      window._forceDark = true;
+    } else {
+      window._forceDark = false;
+    }
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const color = s.primary_color || '#6750a4';
     document.documentElement.style.setProperty('--md-source', color);

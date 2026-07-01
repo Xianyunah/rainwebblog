@@ -9,10 +9,23 @@
 </head>
 <body>
   <nav class="nav-bar" id="mainNav"></nav>
-  <main class="page" style="max-width:720px">
-    <div id="blogApp">
-      <div id="blogList"><div class="loading"><div class="spinner"></div></div></div>
-      <div id="blogDetail" style="display:none"></div>
+  <main class="page">
+    <div class="homepage-layout">
+      <aside class="homepage-sidebar" id="blogSidebar">
+        <div class="card" style="text-align:center">
+          <div class="homepage-avatar" id="hpAvatarWrap">
+            <img id="hpAvatar" src="" alt="avatar" style="display:none">
+            <span id="hpAvatarPlaceholder" class="material-icons" style="font-size:64px;color:var(--md-ref-on-surface-variant)">person</span>
+          </div>
+          <div id="hpBio" class="homepage-bio"></div>
+        </div>
+      </aside>
+      <div class="homepage-content">
+        <div id="blogApp">
+          <div id="blogList"><div class="loading"><div class="spinner"></div></div></div>
+          <div id="blogDetail" style="display:none"></div>
+        </div>
+      </div>
     </div>
   </main>
   <div id="snackbar" class="snackbar"></div>

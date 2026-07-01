@@ -7,6 +7,10 @@ function initTheme() {
 }
 
 function toggleTheme() {
+  if (window._forceDark) {
+    showSnackbar('已强制启用深色模式无法更改');
+    return;
+  }
   const html = document.documentElement;
   const isDark = html.getAttribute('data-theme') === 'dark';
   if (isDark) {

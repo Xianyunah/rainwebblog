@@ -78,7 +78,7 @@
     if (token) window.location.href = '/';
 
     // First load settings, then check captcha
-    API.getSettings().then(s => {
+    API.getPublicSettings().then(s => {
       window._recaptchaSiteKey = s.recaptcha_site_key || '';
       window._turnstileSiteKey = s.turnstile_site_key || '';
       CAPTCHA.checkRequired('register').then(r => {

@@ -31,6 +31,7 @@ const API = {
   setUserRole(id, role) { return this.request('PUT', '/auth/users/' + id + '/role', { role }); },
 
   // Settings
+  getPublicSettings() { return this.request('GET', '/settings/public'); },
   getSettings() { return this.request('GET', '/settings'); },
   saveSettings(data) { return this.request('PUT', '/settings', data); },
 

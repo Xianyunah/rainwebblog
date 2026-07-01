@@ -3,13 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RainWeb - 个人云平台</title>
-  <meta name="description" content="RainWeb 个人云管理平台 - 博客、论坛、密码管理器、管理面板聚合。Material Design 3 风格，支持深色/浅色切换。">
-  <meta name="keywords" content="RainWeb,个人云,博客,论坛,密码管理器,管理面板">
-  <meta property="og:title" content="RainWeb - 个人云平台">
-  <meta property="og:description" content="一站式个人云管理平台，集成博客、论坛、密码管理器等功能">
+  <title>首页 - RainWeb</title>
+  <meta name="description" content="个人主页 - RainWeb">
   <meta property="og:type" content="website">
-  <meta name="robots" content="index,follow">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🌧</text></svg>">
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
   <link rel="stylesheet" href="/css/style.css">
@@ -17,11 +13,26 @@
 <body>
   <nav class="nav-bar" id="mainNav"></nav>
   <main class="page">
-    <div id="blogHeader" style="margin-bottom:24px">
-      <h1 class="page-title" id="pageTitle">博客</h1>
+    <div class="homepage-layout">
+      <aside class="homepage-sidebar">
+        <div class="card" style="text-align:center">
+          <div class="homepage-avatar" id="hpAvatarWrap">
+            <img id="hpAvatar" src="" alt="avatar" style="display:none">
+            <span id="hpAvatarPlaceholder" class="material-icons" style="font-size:64px;color:var(--md-ref-on-surface-variant)">person</span>
+          </div>
+          <div id="hpBio" class="homepage-bio"></div>
+        </div>
+        <div class="card" id="hpRecentCard">
+          <div class="homepage-recent-header">最新文章</div>
+          <div id="hpRecentPosts" class="homepage-recent-list"></div>
+        </div>
+      </aside>
+      <div class="homepage-content">
+        <div class="card">
+          <div class="md-body" id="hpContent"></div>
+        </div>
+      </div>
     </div>
-    <div id="blogList" class="blog-waterfall"></div>
-    <div id="blogDetail" style="display:none"></div>
   </main>
   <div id="snackbar" class="snackbar"></div>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -29,6 +40,46 @@
   <script src="/js/api.js"></script>
   <script src="/js/nav.js"></script>
   <script src="/js/render.js"></script>
-  <script src="/js/main.js"></script>
+  <script>
+    function escapeHtml(t) {
+      const d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const s = await API.getPublicSettings();
+        if (s.homepage_avatar) {
+          document.getElementById('hpAvatar').src = s.homepage_avatar;
+          document.getElementById('hpAvatar').style.display = 'block';
+          document.getElementById('hpAvatarPlaceholder').style.display = 'none';
+        }
+        document.getElementById('hpBio').textContent = s.homepage_bio || '';
+        const body = renderContent(s.homepage_content || '', true);
+        document.getElementById('hpContent').innerHTML = body;
+      } catch (e) {
+        document.getElementById('hpContent').innerHTML = '<p style="color:var(--md-ref-on-surface-variant)">内容加载失败</p>';
+      }
+
+      try {
+        const posts = await API.getBlogPosts(false);
+        const recent = posts.slice(0, 8);
+        const container = document.getElementById('hpRecentPosts');
+        if (recent.length === 0) {
+          container.innerHTML = '<div class="text-muted" style="font-size:13px;text-align:center;padding:8px 0">暂无文章</div>';
+        } else {
+          container.innerHTML = recent.map(p =>
+            `<a href="/blog/${p.id}" class="homepage-recent-item">
+              <span class="homepage-recent-title">${escapeHtml(p.title)}</span>
+              <span class="homepage-recent-date">${p.created_at ? p.created_at.slice(0,10) : ''}</span>
+            </a>`
+          ).join('');
+        }
+      } catch (e) {
+        document.getElementById('hpRecentPosts').innerHTML = '<div class="text-muted" style="font-size:13px;text-align:center;padding:8px 0">加载失败</div>';
+      }
+    });
+  </script>
 </body>
 </html>

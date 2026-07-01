@@ -4,6 +4,24 @@ function escapeHtml(t) {
   return d.innerHTML;
 }
 
+async function loadSidebar() {
+  try {
+    const s = await API.getPublicSettings();
+    const sidebar = document.getElementById('blogSidebar');
+    if (s.blog_show_sidebar === '0') {
+      if (sidebar) sidebar.style.display = 'none';
+      return;
+    }
+    if (sidebar) sidebar.style.display = '';
+    if (s.homepage_avatar) {
+      document.getElementById('hpAvatar').src = s.homepage_avatar;
+      document.getElementById('hpAvatar').style.display = 'block';
+      document.getElementById('hpAvatarPlaceholder').style.display = 'none';
+    }
+    document.getElementById('hpBio').textContent = s.homepage_bio || '';
+  } catch {}
+}
+
 async function loadPosts() {
   const container = document.getElementById('blogList');
   container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
@@ -18,7 +36,7 @@ async function loadPosts() {
     container.innerHTML = '<div class="blog-grid">' + posts.map(p => `
       <div class="card blog-card" onclick="viewPost(${p.id})">
         <div class="blog-title">${escapeHtml(p.title)}</div>
-        <div class="blog-excerpt">${escapeHtml(p.excerpt || p.content.slice(0, 100))}</div>
+        <div class="blog-excerpt">${escapeHtml(p.excerpt || p.content.replace(/[#*`\[\]()>|~_]/g,'').slice(0, 200))}</div>
         <div class="blog-meta">${escapeHtml(p.author_name || '管理员')} · ${p.created_at}</div>
       </div>
     `).join('') + '</div>';
@@ -49,4 +67,7 @@ async function viewPost(id) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', loadPosts);
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadSidebar();
+  loadPosts();
+});

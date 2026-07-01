@@ -4,7 +4,7 @@ const { authMiddleware, adminOnly } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.get('/', (req, res) => {
+router.get('/', authMiddleware, adminOnly, (req, res) => {
   res.json(db.all('SELECT * FROM admin_links ORDER BY sort_order ASC, id ASC'));
 });
 

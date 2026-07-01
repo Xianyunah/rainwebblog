@@ -23,10 +23,10 @@ async function checkAuth() {
 function switchTab(tab) {
   currentTab = tab;
   document.getElementById('adminTitle').textContent =
-    ({ panels: '管理面板', links: '面板链接', settings: '站点设置', forum: '论坛管理', blog: '博客管理', users: '用户管理', email: '邮件配置' })[tab] || '管理面板';
+    ({ panels: '管理面板', links: '面板链接', settings: '站点设置', forum: '论坛管理', blog: '博客管理', users: '用户管理', email: '邮件配置', homepage: '首页设置' })[tab] || '管理面板';
   document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
   document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).style.display = 'block';
-  const actions = { panels: loadPanels, links: loadLinks, settings: loadSettings, theme: loadThemeSettings, attachments: loadAttachments, forum: loadForumCards, blog: loadBlogPosts, users: loadUsers, email: loadEmailSettings };
+  const actions = { panels: loadPanels, links: loadLinks, settings: loadSettings, theme: loadThemeSettings, homepage: loadHomepage, attachments: loadAttachments, forum: loadForumCards, blog: loadBlogPosts, users: loadUsers, email: loadEmailSettings };
   if (actions[tab]) actions[tab]();
 }
 
@@ -171,6 +171,7 @@ async function loadThemeSettings() {
     document.getElementById('opacityVal').textContent = s.glass_opacity || '0.6';
     loadWallpaperList();
     if (s.theme_wallpaper) previewWallpaperUrl(s.theme_wallpaper);
+    document.getElementById('setForceDark').checked = s.theme_force_dark === '1';
     setNavStyle(s.nav_style || 'default');
     setCardStyle(s.card_style || 'default');
   } catch (e) { showSnackbar(e.message); }
@@ -243,6 +244,7 @@ async function saveThemeSettings() {
       primary_color: document.getElementById('setPrimaryColor').value,
       theme_wallpaper: document.getElementById('setWallpaper').value.trim(),
       theme_wallpaper_scale: document.getElementById('setWallpaperScale').value,
+      theme_force_dark: document.getElementById('setForceDark').checked ? '1' : '0',
       nav_style: window._navStyle || 'default',
       card_style: window._cardStyle || 'default',
       glass_blur: document.getElementById('setGlassBlur').value,
@@ -379,6 +381,50 @@ async function testSmtp() {
     await API.request('POST', '/email/test', { email });
     showSnackbar('测试邮件已发送至 ' + email);
   } catch (e) { showSnackbar(e.message); }
+}
+
+// === Homepage ===
+async function loadHomepage() {
+  try {
+    const s = await API.getSettings();
+    document.getElementById('hpAvatar').value = s.homepage_avatar || '';
+    document.getElementById('hpBio').value = s.homepage_bio || '';
+    document.getElementById('hpContent').value = s.homepage_content || '';
+    document.getElementById('setBlogSidebar').checked = s.blog_show_sidebar !== '0';
+  } catch (e) { showSnackbar(e.message); }
+}
+async function saveHomepage() {
+  try {
+    await API.saveSettings({
+      homepage_avatar: document.getElementById('hpAvatar').value.trim(),
+      homepage_bio: document.getElementById('hpBio').value.trim(),
+      homepage_content: document.getElementById('hpContent').value,
+      blog_show_sidebar: document.getElementById('setBlogSidebar').checked ? '1' : '0',
+    });
+    showSnackbar('已保存');
+  } catch (e) { showSnackbar(e.message); }
+}
+async function uploadHomepageFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.onchange = async () => {
+    if (!input.files[0]) return;
+    const formData = new FormData();
+    formData.append('file', input.files[0]);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/upload/file', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '上传失败');
+      const ta = document.getElementById('hpContent');
+      ta.value = ta.value + '\n' + data.tag + '\n';
+      ta.focus();
+      document.getElementById('hpUploadStatus').textContent = '已插入: ' + data.tag;
+    } catch (e) { showSnackbar(e.message); }
+  };
+  input.click();
 }
 
 // === Forum ===
