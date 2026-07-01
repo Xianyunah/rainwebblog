@@ -428,11 +428,9 @@ async function loadHomepage() {
     try { contacts = JSON.parse(s.homepage_contacts || '[]'); } catch {}
     buildContactsEditor(contacts);
     // Music embed
+    document.getElementById('musicEmbedEnabled').checked = s.music_embed_enabled === '1';
     document.getElementById('musicEmbedCode').value = s.music_embed_code || '';
     document.getElementById('musicEmbedPosition').value = s.music_embed_position || 'right';
-    let pages = [];
-    try { pages = JSON.parse(s.music_embed_pages || '[]'); } catch {}
-    document.querySelectorAll('#musicEmbedPages input').forEach(cb => cb.checked = pages.includes(cb.value));
     document.getElementById('musicEmbedAutohide').checked = s.music_embed_autohide === '1';
     document.getElementById('musicEmbedIdleTimeout').value = s.music_embed_idle_timeout || '10';
   } catch (e) { showSnackbar(e.message); }
@@ -440,15 +438,14 @@ async function loadHomepage() {
 async function saveHomepage() {
   try {
     const contacts = collectContacts();
-    const pages = Array.from(document.querySelectorAll('#musicEmbedPages input:checked')).map(cb => cb.value);
     await API.saveSettings({
       homepage_avatar: document.getElementById('hpAvatar').value.trim(),
       homepage_bio: document.getElementById('hpBio').value.trim(),
       homepage_content: document.getElementById('hpContent').value,
       homepage_contacts: JSON.stringify(contacts),
+      music_embed_enabled: document.getElementById('musicEmbedEnabled').checked ? '1' : '0',
       music_embed_code: document.getElementById('musicEmbedCode').value.trim(),
       music_embed_position: document.getElementById('musicEmbedPosition').value,
-      music_embed_pages: JSON.stringify(pages),
       music_embed_autohide: document.getElementById('musicEmbedAutohide').checked ? '1' : '0',
       music_embed_idle_timeout: document.getElementById('musicEmbedIdleTimeout').value,
     });

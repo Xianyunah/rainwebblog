@@ -217,7 +217,9 @@ function copyToClipboard(text, label) {
   navigator.clipboard.writeText(text).then(() => showSnackbar(label + ' 已复制'));
 }
 
-document.addEventListener('DOMContentLoaded', initPinScreen);
+var PASSWORDS = {
+  init: initPinScreen
+};
 
 // Allow Enter key to submit PIN
 document.getElementById('pinInput')?.addEventListener('keydown', e => {

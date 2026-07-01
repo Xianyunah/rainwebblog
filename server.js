@@ -114,13 +114,12 @@ app.post('/api/update/run', async (req, res) => {
     if (fs.existsSync(tmpDir)) fs.rmSync(tmpDir, { recursive: true });
     fs.mkdirSync(tmpDir, { recursive: true });
 
-    // Download latest source zip (follow redirects via codeload)
+    // Download latest source zip
     const zipPath = path.join(tmpDir, 'update.zip');
     await new Promise((resolve, reject) => {
       const f = fs.createWriteStream(zipPath);
       const url = 'https://codeload.github.com/Xianyunah/rainwebblog/zip/refs/heads/master';
       https.get(url, (r) => {
-        // Follow up to 5 redirects
         let redirects = 0;
         const follow = (res) => {
           if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && redirects < 5) {

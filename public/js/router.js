@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var PJAX_PATHS = ['/', '/blog.html', '/forum.html', '/admin.html'];
+  var PJAX_PATHS = ['/', '/blog.html', '/forum.html', '/admin.html', '/passwords.html', '/login.html', '/register.html', '/profile.html'];
 
   var ROUTER = {
     init: function () {
@@ -83,6 +83,7 @@
         '/blog.html': { global: 'BLOG', js: '/js/blog.js' },
         '/forum.html': { global: 'FORUM', js: '/js/forum.js' },
         '/admin.html': { global: 'ADMIN', js: '/js/admin.js' },
+        '/passwords.html': { global: 'PASSWORDS', js: '/js/passwords.js' },
       };
       return map[path] || null;
     },

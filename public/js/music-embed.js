@@ -9,7 +9,6 @@
       this.autoHide = false;
       this.position = 'right';
       this.embedCode = '';
-      this.pages = [];
     }
 
     init() {
@@ -20,6 +19,9 @@
         return;
       }
 
+      var enabled = s.music_embed_enabled === '1';
+      if (!enabled) return;
+
       this.embedCode = s.music_embed_code || '';
       if (!this.embedCode) return;
 
@@ -27,24 +29,9 @@
       this.autoHide = s.music_embed_autohide === '1';
       this.idleTimeout = (parseInt(s.music_embed_idle_timeout) || 10) * 1000;
 
-      var pages = [];
-      try { pages = JSON.parse(s.music_embed_pages || '[]'); } catch (e) {}
-      this.pages = pages;
-
-      if (!this._shouldShow()) return;
       this._render();
       this._bindEvents();
       if (this.autoHide) this._startIdleTimer();
-    }
-
-    _shouldShow() {
-      var path = location.pathname;
-      return this.pages.some(function (p) {
-        if (p === 'homepage') return path === '/';
-        if (p === 'blog') return path === '/blog.html';
-        if (p === 'forum') return path === '/forum.html';
-        return false;
-      });
     }
 
     _render() {
