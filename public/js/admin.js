@@ -800,5 +800,3 @@ var ADMIN = {
     }
   }
 };
-
-document.addEventListener('DOMContentLoaded', function () { ADMIN.init(); });

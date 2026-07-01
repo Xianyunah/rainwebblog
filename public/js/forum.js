@@ -263,8 +263,6 @@ var FORUM = {
   }
 };
 
-document.addEventListener('DOMContentLoaded', function () { FORUM.init(); });
-
 window.addEventListener('popstate', function () {
   if (!location.pathname.startsWith('/forum')) return;
   var pm = location.pathname.match(/^\/forum\/(\d+)$/);

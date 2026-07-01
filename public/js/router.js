@@ -67,13 +67,34 @@
     runPageInit: function (path) {
       if (path === '/' || path === '/index.html') {
         if (window.HOMEPAGE) HOMEPAGE.init();
-      } else if (path === '/blog.html') {
-        if (window.BLOG) BLOG.init();
-      } else if (path === '/forum.html') {
-        if (window.FORUM) FORUM.init();
-      } else if (path === '/admin.html') {
-        if (window.ADMIN) ADMIN.init();
+        return;
       }
+      var pageConf = this._pageConfig(path);
+      if (!pageConf) return;
+      if (window[pageConf.global]) {
+        window[pageConf.global].init();
+      } else {
+        this._loadScript(pageConf.js, pageConf.global);
+      }
+    },
+
+    _pageConfig: function (path) {
+      var map = {
+        '/blog.html': { global: 'BLOG', js: '/js/blog.js' },
+        '/forum.html': { global: 'FORUM', js: '/js/forum.js' },
+        '/admin.html': { global: 'ADMIN', js: '/js/admin.js' },
+      };
+      return map[path] || null;
+    },
+
+    _loadScript: function (src, globalName) {
+      var self = this;
+      var script = document.createElement('script');
+      script.src = src;
+      script.onload = function () {
+        if (window[globalName]) window[globalName].init();
+      };
+      document.head.appendChild(script);
     },
 
     updateNav: function (path) {

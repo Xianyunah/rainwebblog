@@ -67,5 +67,3 @@ var BLOG = {
     loadPosts();
   }
 };
-
-document.addEventListener('DOMContentLoaded', function () { BLOG.init(); });
