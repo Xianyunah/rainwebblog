@@ -191,6 +191,32 @@
           </div>
         </div>
       </div>
+      <div class="card settings-card">
+        <h3>音乐嵌入</h3>
+        <div class="form-group"><label>嵌入代码</label>
+          <textarea id="musicEmbedCode" style="min-height:80px;font-family:monospace;font-size:13px" placeholder="粘贴网易云音乐 iframe 代码，留空则不显示"></textarea>
+        </div>
+        <div class="form-group"><label>显示位置</label>
+          <select id="musicEmbedPosition">
+            <option value="right">右下角</option>
+            <option value="left">左下角</option>
+          </select>
+        </div>
+        <div class="form-group"><label>显示页面</label>
+          <div id="musicEmbedPages" style="display:flex;gap:16px;flex-wrap:wrap">
+            <label style="font-weight:400;gap:6px;display:flex;align-items:center"><input type="checkbox" value="homepage"> 首页</label>
+            <label style="font-weight:400;gap:6px;display:flex;align-items:center"><input type="checkbox" value="blog"> 博客</label>
+            <label style="font-weight:400;gap:6px;display:flex;align-items:center"><input type="checkbox" value="forum"> 论坛</label>
+          </div>
+        </div>
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:12px">
+          <label style="margin:0;min-width:100px">自动收缩</label>
+          <label style="font-weight:400;gap:6px;display:flex;align-items:center"><input type="checkbox" id="musicEmbedAutohide"> 无操作 10 秒后缩小为图标</label>
+        </div>
+        <div class="form-group"><label>空闲超时（秒）</label>
+          <input type="number" id="musicEmbedIdleTimeout" min="3" max="120" value="10" style="width:80px">
+        </div>
+      </div>
       <button class="btn btn-filled" onclick="saveHomepage()">保存</button>
     </div>
 
@@ -312,6 +338,7 @@
   <script src="/js/theme.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/nav.js"></script>
+  <script src="/js/router.js"></script>
   <script src="/js/admin.js"></script>
 </body>
 </html>

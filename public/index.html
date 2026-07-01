@@ -35,11 +35,14 @@
       </div>
     </div>
   </main>
+  <div id="musicEmbed"></div>
   <div id="snackbar" class="snackbar"></div>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="/js/theme.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/nav.js"></script>
+  <script src="/js/router.js"></script>
+  <script src="/js/music-embed.js"></script>
   <script src="/js/render.js"></script>
   <script>
     function escapeHtml(t) {
@@ -48,53 +51,50 @@
       return d.innerHTML;
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        const s = await API.getPublicSettings();
-        if (s.homepage_avatar) {
-          document.getElementById('hpAvatar').src = s.homepage_avatar;
-          document.getElementById('hpAvatar').style.display = 'block';
-          document.getElementById('hpAvatarPlaceholder').style.display = 'none';
+    var HOMEPAGE = {
+      init: async function () {
+        try {
+          var s = await API.getPublicSettings();
+          if (s.homepage_avatar) {
+            document.getElementById('hpAvatar').src = s.homepage_avatar;
+            document.getElementById('hpAvatar').style.display = 'block';
+            document.getElementById('hpAvatarPlaceholder').style.display = 'none';
+          }
+          document.getElementById('hpBio').textContent = s.homepage_bio || '';
+          var contactsEl = document.getElementById('hpContacts');
+          if (s.homepage_contacts) {
+            try {
+              var links = JSON.parse(s.homepage_contacts);
+              if (links.length > 0) {
+                contactsEl.innerHTML = links.map(function (l) {
+                  return '<a href="' + escapeHtml(l.url) + '" target="_blank" rel="noopener" class="hp-contact-link" title="' + escapeHtml(l.title || '') + '"><span class="material-icons">' + escapeHtml(l.icon || 'link') + '</span></a>';
+                }).join('');
+              }
+            } catch (e) {}
+          }
+          var body = renderContent(s.homepage_content || '', true);
+          document.getElementById('hpContent').innerHTML = body;
+        } catch (e) {
+          document.getElementById('hpContent').innerHTML = '<p style="color:var(--md-ref-on-surface-variant)">内容加载失败</p>';
         }
-        document.getElementById('hpBio').textContent = s.homepage_bio || '';
-        // Contact links
-        const contactsEl = document.getElementById('hpContacts');
-        if (s.homepage_contacts) {
-          try {
-            const links = JSON.parse(s.homepage_contacts);
-            if (links.length > 0) {
-              contactsEl.innerHTML = links.map(l =>
-                `<a href="${escapeHtml(l.url)}" target="_blank" rel="noopener" class="hp-contact-link" title="${escapeHtml(l.title || '')}">
-                  <span class="material-icons">${escapeHtml(l.icon || 'link')}</span>
-                </a>`
-              ).join('');
-            }
-          } catch {}
-        }
-        const body = renderContent(s.homepage_content || '', true);
-        document.getElementById('hpContent').innerHTML = body;
-      } catch (e) {
-        document.getElementById('hpContent').innerHTML = '<p style="color:var(--md-ref-on-surface-variant)">内容加载失败</p>';
-      }
 
-      try {
-        const posts = await API.getBlogPosts(false);
-        const recent = posts.slice(0, 8);
-        const container = document.getElementById('hpRecentPosts');
-        if (recent.length === 0) {
-          container.innerHTML = '<div class="text-muted" style="font-size:13px;text-align:center;padding:8px 0">暂无文章</div>';
-        } else {
-          container.innerHTML = recent.map(p =>
-            `<a href="/blog/${p.id}" class="homepage-recent-item">
-              <span class="homepage-recent-title">${escapeHtml(p.title)}</span>
-              <span class="homepage-recent-date">${p.created_at ? p.created_at.slice(0,10) : ''}</span>
-            </a>`
-          ).join('');
+        try {
+          var posts = await API.getBlogPosts(false);
+          var recent = posts.slice(0, 8);
+          var container = document.getElementById('hpRecentPosts');
+          if (recent.length === 0) {
+            container.innerHTML = '<div class="text-muted" style="font-size:13px;text-align:center;padding:8px 0">暂无文章</div>';
+          } else {
+            container.innerHTML = recent.map(function (p) {
+              return '<a href="/blog/' + p.id + '" class="homepage-recent-item"><span class="homepage-recent-title">' + escapeHtml(p.title) + '</span><span class="homepage-recent-date">' + (p.created_at ? p.created_at.slice(0,10) : '') + '</span></a>';
+            }).join('');
+          }
+        } catch (e) {
+          document.getElementById('hpRecentPosts').innerHTML = '<div class="text-muted" style="font-size:13px;text-align:center;padding:8px 0">加载失败</div>';
         }
-      } catch (e) {
-        document.getElementById('hpRecentPosts').innerHTML = '<div class="text-muted" style="font-size:13px;text-align:center;padding:8px 0">加载失败</div>';
       }
-    });
+    };
+    document.addEventListener('DOMContentLoaded', function () { HOMEPAGE.init(); });
   </script>
 </body>
 </html>

@@ -61,7 +61,11 @@ async function viewPost(id) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadSidebar();
-  loadPosts();
-});
+var BLOG = {
+  init: async function () {
+    await loadSidebar();
+    loadPosts();
+  }
+};
+
+document.addEventListener('DOMContentLoaded', function () { BLOG.init(); });

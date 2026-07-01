@@ -125,7 +125,7 @@ async function loadSettings() {
     document.getElementById('setSiteName').value = s.site_name || '';
     document.getElementById('setSiteDesc').value = s.site_description || '';
     document.getElementById('setSiteUrl').value = s.site_url || '';
-    document.getElementById('setSiteFavicon').value = s.site_favicon || '';
+    document.getElementById('setSiteFavicon').value = s.site_favicon || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌧</text></svg>';
     document.getElementById('setRecaptchaSite').value = s.recaptcha_site_key || '';
     document.getElementById('setRecaptchaSecret').value = '';
     document.getElementById('setTurnstileSite').value = s.turnstile_site_key || '';
@@ -427,16 +427,30 @@ async function loadHomepage() {
     let contacts = [];
     try { contacts = JSON.parse(s.homepage_contacts || '[]'); } catch {}
     buildContactsEditor(contacts);
+    // Music embed
+    document.getElementById('musicEmbedCode').value = s.music_embed_code || '';
+    document.getElementById('musicEmbedPosition').value = s.music_embed_position || 'right';
+    let pages = [];
+    try { pages = JSON.parse(s.music_embed_pages || '[]'); } catch {}
+    document.querySelectorAll('#musicEmbedPages input').forEach(cb => cb.checked = pages.includes(cb.value));
+    document.getElementById('musicEmbedAutohide').checked = s.music_embed_autohide === '1';
+    document.getElementById('musicEmbedIdleTimeout').value = s.music_embed_idle_timeout || '10';
   } catch (e) { showSnackbar(e.message); }
 }
 async function saveHomepage() {
   try {
     const contacts = collectContacts();
+    const pages = Array.from(document.querySelectorAll('#musicEmbedPages input:checked')).map(cb => cb.value);
     await API.saveSettings({
       homepage_avatar: document.getElementById('hpAvatar').value.trim(),
       homepage_bio: document.getElementById('hpBio').value.trim(),
       homepage_content: document.getElementById('hpContent').value,
       homepage_contacts: JSON.stringify(contacts),
+      music_embed_code: document.getElementById('musicEmbedCode').value.trim(),
+      music_embed_position: document.getElementById('musicEmbedPosition').value,
+      music_embed_pages: JSON.stringify(pages),
+      music_embed_autohide: document.getElementById('musicEmbedAutohide').checked ? '1' : '0',
+      music_embed_idle_timeout: document.getElementById('musicEmbedIdleTimeout').value,
     });
     showSnackbar('已保存');
   } catch (e) { showSnackbar(e.message); }
@@ -777,11 +791,14 @@ async function executeDelete() {
 }
 
 // === Init ===
-document.addEventListener('DOMContentLoaded', async () => {
-  const user = await checkAuth();
-  if (user) {
-    // Auto-switch to tab from URL query
-    const tabMatch = location.search.match(/tab=(\w+)/);
-    switchTab(tabMatch ? tabMatch[1] : 'panels');
+var ADMIN = {
+  init: async function () {
+    var user = await checkAuth();
+    if (user) {
+      var tabMatch = location.search.match(/tab=(\w+)/);
+      switchTab(tabMatch ? tabMatch[1] : 'panels');
+    }
   }
-});
+};
+
+document.addEventListener('DOMContentLoaded', function () { ADMIN.init(); });

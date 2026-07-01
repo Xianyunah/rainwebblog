@@ -1731,3 +1731,40 @@ button.glass-card, .btn.glass-card, .nav-tab.glass-card, .chip.glass-card {
   }
 }
 
+/* ===== Music Embed ===== */
+.music-embed {
+  position: fixed;
+  bottom: 24px;
+  z-index: 100;
+  line-height: 0;
+  transition: all 0.3s ease;
+}
+.music-embed.right { right: 24px; }
+.music-embed.left { left: 24px; }
+.music-embed iframe {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.music-embed.collapsed {
+  width: 48px;
+  height: 48px;
+}
+.music-embed.collapsed .music-embed-player { display: none; }
+.music-embed.collapsed .music-embed-icon {
+  display: flex !important;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--md-ref-primary-container);
+  color: var(--md-ref-on-primary-container);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: background 0.2s;
+}
+.music-embed.collapsed .music-embed-icon:hover {
+  background: var(--md-ref-primary);
+  color: var(--md-ref-on-primary);
+}
+

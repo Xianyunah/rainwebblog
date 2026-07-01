@@ -237,32 +237,37 @@ async function deletePost(id) { if (!confirm('确定删除？')) return; try { a
 
 async function deleteReply(id) { if (!confirm('确定删除？')) return; try { await API.deleteForumReply(id); if (currentPostId) viewPost(currentPostId); } catch (e) { showSnackbar(e.message); } }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  await checkAuth();
-  await loadCategories();
-  // Check URL for post, board, or full board mode
-  const postMatch = location.pathname.match(/^\/forum\/(\d+)$/);
-  const params = new URLSearchParams(location.search);
-  const boardParam = params.get('board');
-  const fullMode = params.get('full') === '1';
+var FORUM = {
+  init: async function () {
+    await checkAuth();
+    await loadCategories();
+    // Check URL for post, board, or full board mode
+    var postMatch = location.pathname.match(/^\/forum\/(\d+)$/);
+    var params = new URLSearchParams(location.search);
+    var boardParam = params.get('board');
+    var fullMode = params.get('full') === '1';
 
-  if (postMatch) {
-    selectCategory(parseInt(postMatch[1])); // will show post
-  } else if (boardParam) {
-    selectCategory(parseInt(boardParam));
-    if (fullMode) {
-      // Hide sidebar in full mode
-      document.querySelector('.forum-sidebar').style.display = 'none';
-      document.querySelector('.forum-layout').style.gridTemplateColumns = '1fr';
+    if (postMatch) {
+      selectCategory(parseInt(postMatch[1])); // will show post
+    } else if (boardParam) {
+      selectCategory(parseInt(boardParam));
+      if (fullMode) {
+        var sidebar = document.querySelector('.forum-sidebar');
+        if (sidebar) sidebar.style.display = 'none';
+        document.querySelector('.forum-layout').style.gridTemplateColumns = '1fr';
+      }
+    } else {
+      showAllPosts();
     }
-  } else {
-    showAllPosts();
+    if (!currentUser) { document.getElementById('newPostBtn').textContent = '登录发帖'; document.getElementById('newPostBtn').onclick = function () { window.location.href = '/login.html'; }; }
   }
-  if (!currentUser) { document.getElementById('newPostBtn').textContent = '登录发帖'; document.getElementById('newPostBtn').onclick = () => window.location.href = '/login.html'; }
-});
+};
 
-window.addEventListener('popstate', () => {
-  const pm = location.pathname.match(/^\/forum\/(\d+)$/);
+document.addEventListener('DOMContentLoaded', function () { FORUM.init(); });
+
+window.addEventListener('popstate', function () {
+  if (!location.pathname.startsWith('/forum')) return;
+  var pm = location.pathname.match(/^\/forum\/(\d+)$/);
   if (pm) viewPost(parseInt(pm[1]));
   else if (currentCatId) selectCategory(currentCatId);
   else showAllPosts();

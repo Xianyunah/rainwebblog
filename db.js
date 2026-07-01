@@ -179,6 +179,12 @@ function seedDefaults() {
     captcha_register: '0',
     captcha_forum: '0',
     captcha_type: 'builtin',
+    site_favicon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌧</text></svg>',
+    music_embed_code: '',
+    music_embed_position: 'right',
+    music_embed_pages: '["homepage"]',
+    music_embed_autohide: '0',
+    music_embed_idle_timeout: '10',
   };
   for (const [k, v] of Object.entries(defaults)) {
     if (!get('SELECT value FROM site_settings WHERE key = ?', [k])) {
