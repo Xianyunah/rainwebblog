@@ -263,7 +263,7 @@ async function cmdRestart() {
 
 // === Upgrade ===
 const REPO_URL = 'https://github.com/Xianyunah/rainwebblog.git';
-const REPO_ZIP = 'https://github.com/Xianyunah/rainwebblog/archive/refs/heads/main.zip';
+const REPO_ZIP = 'https://codeload.github.com/Xianyunah/rainwebblog/zip/refs/heads/master';
 
 async function cmdUpgrade() {
   console.log('=== RainWeb Upgrade ===\n');
@@ -294,7 +294,19 @@ async function cmdUpgrade() {
           const https = require('https');
           const fs = require('fs');
           const f = fs.createWriteStream('${zipPath.replace(/\\/g, '/')}');
-          https.get('${REPO_ZIP}', r => r.pipe(f));
+          const url = '${REPO_ZIP}';
+          https.get(url, r => {
+            let i = 0, u = url;
+            const fol = res => {
+              if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && i < 5) {
+                i++; u = new URL(res.headers.location, u).href;
+                https.get(u, fol).on('error', () => {});
+                return;
+              }
+              res.pipe(f);
+            };
+            fol(r);
+          });
         "`, { stdio: 'pipe', timeout: 60000 });
       }
 
